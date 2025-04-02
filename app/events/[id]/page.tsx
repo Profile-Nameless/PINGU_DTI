@@ -1,54 +1,50 @@
-import Layout from "../../components/layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import EventDetails from "./EventDetails"
+import { Suspense } from "react"
 
-export default function EventDetail({ params }: { params: { id: string } }) {
-  // In a real application, you would fetch the event details based on the ID
-  const event = {
-    id: params.id,
-    name: "Freshman Orientation",
-    date: "2023-08-25",
-    location: "Main Auditorium",
-    description:
-      "Welcome event for all incoming freshmen. Learn about campus resources, meet fellow students, and get ready for an exciting academic year!",
-    attendees: 150,
+interface EventPageProps {
+  params: {
+    id: string
   }
+  searchParams: {
+    source?: string
+    mode?: string
+  }
+}
 
-  return (
-    <Layout>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">{event.name}</h1>
-        <Link href={`/events/${event.id}/edit`}>
-          <Button>Edit Event</Button>
-        </Link>
+// Client component wrapper
+function EventDetailsWrapper({ id, fromDashboard, mode }: { 
+  id: string; 
+  fromDashboard: boolean; 
+  mode?: string 
+}) {
+  if (!id) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Error</h2>
+          <p className="text-gray-600 mb-4">Event ID is missing</p>
+        </div>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Event Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-semibold">Date</h3>
-              <p>{event.date}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold">Location</h3>
-              <p>{event.location}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold">Description</h3>
-              <p>{event.description}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold">Attendees</h3>
-              <p>{event.attendees}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </Layout>
-  )
+    );
+  }
+  
+  return <EventDetails id={id} fromDashboard={fromDashboard} mode={mode} />;
+}
+
+export default function EventPage({ params, searchParams }: EventPageProps) {
+  // Extract search params safely
+  const source = searchParams?.source || '';
+  const mode = searchParams?.mode || '';
+  const id = params?.id || '';
+  
+  return (
+    <Suspense fallback={<div>Loading event details...</div>}>
+      <EventDetailsWrapper 
+        id={id} 
+        fromDashboard={source === 'dashboard'} 
+        mode={mode}
+      />
+    </Suspense>
+  );
 }
 

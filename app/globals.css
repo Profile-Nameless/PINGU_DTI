@@ -78,10 +78,6 @@ body {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.section-partition {
-  @apply border-b border-gray-200 my-8;
-}
-
 .nav-link {
   @apply text-black hover:text-accent transition-colors;
 }
@@ -89,4 +85,3 @@ body {
 .nav-link.active {
   @apply text-accent font-semibold;
 }
-
