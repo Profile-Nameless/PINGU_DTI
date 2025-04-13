@@ -7,20 +7,31 @@ export interface Event {
   date: string;
   time: string;
   location: string;
-  status: string;
-  registrations: number;
-  capacity: number;
-  coverImage: string;
+  venue: string | { name: string };
+  coverimage: string | null;
+  coverImage: string | null;
+  gallery?: string[];
   category: string;
+  organizer_id: string;
+  registrations: number;
+  created_at: string;
+  updated_at: string;
+  status: string;
+  capacity: number;
   price: number;
   eligibility: string[] | null;
   rules: string[] | null;
   schedule: any;
-  venue: any;
-  organizer: string;
   interested: number;
-  created_at: string;
-  updated_at: string;
+  organizers?: {
+    id: string;
+    name: string;
+    user_id: string;
+    profiles?: {
+      full_name: string;
+      college?: string;
+    };
+  };
 }
 
 export interface DisplayEvent {
@@ -34,22 +45,34 @@ export interface DisplayEvent {
   category: string;
   organizer: string;
   attendees: number;
+  rawDate: Date;
 }
 
-// Function to convert database event to display event
-export const convertToDisplayEvent = async (event: Event): Promise<DisplayEvent> => {
-  try {
-    // Get organizer name
-    let organizerName = 'Unknown Organizer';
-    
-    if (event.organizer) {
-      try {
-        organizerName = await getOrganizerNameById(event.organizer);
-      } catch (error) {
-        console.error('Error getting organizer name:', error);
-      }
+// Cache for events and organizers
+const eventCache = new Map<string, any>();
+const organizerCache = new Map<string, any>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const ORGANIZER_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+// Add cache cleanup function
+const cleanupCache = (cache: Map<string, any>, duration: number) => {
+  const now = Date.now();
+  for (const [key, value] of cache.entries()) {
+    if (now - value.timestamp > duration) {
+      cache.delete(key);
     }
-    
+  }
+};
+
+// Function to convert database event to display event
+export const convertToDisplayEvent = async (event: Event, organizerName: string = 'Unknown Organizer'): Promise<DisplayEvent> => {
+  try {
+    // Clean up old cache entries periodically
+    if (Math.random() < 0.1) { // 10% chance to clean up on each conversion
+      cleanupCache(eventCache, CACHE_DURATION);
+      cleanupCache(organizerCache, ORGANIZER_CACHE_DURATION);
+    }
+
     return {
       id: event.id,
       title: event.title,
@@ -57,14 +80,14 @@ export const convertToDisplayEvent = async (event: Event): Promise<DisplayEvent>
       time: event.time,
       location: event.location,
       venue: typeof event.venue === 'object' && event.venue.name ? event.venue.name : 'Venue TBA',
-      image: event.coverImage || '/placeholder.svg?height=300&width=400',
+      image: event.coverimage || event.coverImage || '/placeholder.svg?height=300&width=400',
       category: event.category,
       organizer: organizerName,
-      attendees: event.registrations
+      attendees: event.registrations,
+      rawDate: new Date(event.date)
     };
   } catch (error) {
     console.error('Error in convertToDisplayEvent:', error);
-    // Return a minimal display event with available data
     return {
       id: event.id || 'unknown',
       title: event.title || 'Unknown Event',
@@ -74,176 +97,166 @@ export const convertToDisplayEvent = async (event: Event): Promise<DisplayEvent>
       venue: 'Venue TBA',
       image: '/placeholder.svg?height=300&width=400',
       category: event.category || 'Uncategorized',
-      organizer: 'Unknown Organizer',
-      attendees: event.registrations || 0
+      organizer: organizerName,
+      attendees: event.registrations || 0,
+      rawDate: new Date()
     };
   }
 };
 
-// Function to get random events
+// Function to get random events with caching
 export const getRandomEvents = async (count: number): Promise<DisplayEvent[]> => {
   try {
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching events:', error);
-      return [];
+    const cacheKey = `random_${count}`;
+    const cachedData = eventCache.get(cacheKey);
+    if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
+      return cachedData.data;
     }
 
-    // Shuffle the events array
-    const shuffled = [...data].sort(() => 0.5 - Math.random());
+    // Fetch events with organizer names in a single query
+    const { data, error } = await supabase
+      .from('events')
+      .select(`
+        *,
+        organizers!inner (
+          id,
+          name,
+          user_id,
+          profiles!inner (
+            full_name
+          )
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(count);
     
-    // Take the first 'count' events
-    const selectedEvents = shuffled.slice(0, count);
+    if (error || !data || data.length === 0) {
+      return [];
+    }
     
-    // Convert to display format
-    const displayEvents = await Promise.all(selectedEvents.map(convertToDisplayEvent));
+    // Convert to display format with organizer names
+    const displayEvents = await Promise.all(
+      data.map((event: any) => {
+        const organizerName = event.organizers?.profiles?.full_name || event.organizers?.name || 'Unknown Organizer';
+        return convertToDisplayEvent(event, organizerName);
+      })
+    );
+    
+    // Cache the results
+    eventCache.set(cacheKey, {
+      data: displayEvents,
+      timestamp: Date.now()
+    });
+    
     return displayEvents;
   } catch (error) {
-    console.error('Error in getRandomEvents:', error);
     return [];
   }
 };
 
-// Function to get popular events based on registration count
-export async function getPopularEvents(count: number = 8): Promise<DisplayEvent[]> {
+// Function to get popular events with caching
+export const getPopularEvents = async (count: number): Promise<DisplayEvent[]> => {
   try {
-    // Fetch events with registrations and interested data
-    const { data: events, error } = await supabase
+    const cacheKey = `popular_${count}`;
+    const cachedData = eventCache.get(cacheKey);
+    if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
+      return cachedData.data;
+    }
+
+    // Fetch events with organizer names in a single query
+    const { data, error } = await supabase
       .from('events')
-      .select('*')
-      .limit(100); // Fetch a larger pool to calculate popularity
-
-    if (error) throw error;
-
-    // Calculate popularity score for each event
-    const eventsWithScore = events.map(event => {
-      const registrations = event.registrations || 0;
-      const interested = event.interested || 0;
-      const capacity = event.capacity || 1; // Avoid division by zero
-      
-      // Calculate different popularity metrics
-      
-      // 1. Registration ratio (how many seats are filled)
-      const registrationRatio = registrations / capacity;
-      
-      // 2. Interest ratio (how many people are interested vs capacity)
-      const interestRatio = interested / capacity;
-      
-      // 3. Engagement ratio (total engagement vs capacity)
-      const totalEngagement = registrations + interested;
-      const engagementRatio = totalEngagement / capacity;
-      
-      // 4. Conversion rate (how many interested people actually registered)
-      const conversionRate = interested > 0 ? registrations / interested : 0;
-      
-      // Calculate weighted popularity score
-      // Weights can be adjusted based on what factors you consider most important
-      const popularityScore = 
-        (registrationRatio * 0.4) +      // 40% weight on registration ratio
-        (interestRatio * 0.3) +          // 30% weight on interest ratio
-        (engagementRatio * 0.2) +        // 20% weight on total engagement
-        (conversionRate * 0.1);          // 10% weight on conversion rate
-
-      return {
-        ...event,
-        popularityScore
-      };
+      .select(`
+        *,
+        organizers!inner (
+          id,
+          name,
+          user_id,
+          profiles!inner (
+            full_name
+          )
+        )
+      `)
+      .order('registrations', { ascending: false })
+      .limit(count);
+    
+    if (error || !data || data.length === 0) {
+      return getRandomEvents(count);
+    }
+    
+    // Convert to display format with organizer names
+    const displayEvents = await Promise.all(
+      data.map((event: any) => {
+        const organizerName = event.organizers?.profiles?.full_name || event.organizers?.name || 'Unknown Organizer';
+        return convertToDisplayEvent(event, organizerName);
+      })
+    );
+    
+    // Cache the results
+    eventCache.set(cacheKey, {
+      data: displayEvents,
+      timestamp: Date.now()
     });
-
-    // Sort by popularity score and take top 'count' events
-    const popularEvents = eventsWithScore
-      .sort((a, b) => b.popularityScore - a.popularityScore)
-      .slice(0, count);
-
-    // Convert to display format
-    const displayEvents = await Promise.all(popularEvents.map(convertToDisplayEvent));
+    
     return displayEvents;
   } catch (error) {
-    console.error('Error fetching popular events:', error);
-    return [];
+    return getRandomEvents(count);
   }
-}
+};
 
-// Function to get events from a specific college
+// Function to get events from a specific college with caching
 export const getEventsFromCollege = async (college: string, count: number): Promise<DisplayEvent[]> => {
   try {
-    console.log('Fetching events for college:', college);
-    
     if (!college) {
-      console.log('No college name provided, returning random events');
       return getRandomEvents(count);
     }
     
-    // Find all organizers at the specified college
-    const { data: collegeOrganizers, error: organizersError } = await supabase
-      .from('profile')
-      .select('id')
-      .eq('college', college);
-
-    if (organizersError) {
-      console.error('Error finding college organizers:', organizersError);
-      console.error('Error details:', {
-        code: organizersError.code,
-        message: organizersError.message,
-        details: organizersError.details,
-        hint: organizersError.hint
-      });
-      return getRandomEvents(count);
+    const cacheKey = `college_${college}_${count}`;
+    const cachedData = eventCache.get(cacheKey);
+    if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
+      return cachedData.data;
     }
-
-    if (!collegeOrganizers || collegeOrganizers.length === 0) {
-      console.log(`No organizers found for college: ${college}`);
-      return getRandomEvents(count);
-    }
-
-    // Get all organizer IDs
-    const organizerIds = collegeOrganizers.map(org => org.id);
-    console.log('Found organizer IDs:', organizerIds);
-
-    // Fetch events from all organizers at the college
-    let allEvents: any[] = [];
     
-    for (const organizerId of organizerIds) {
-      const { data: events, error: eventsError } = await supabase
-        .from('events')
-        .select('*')
-        .eq('organizer', organizerId);
-        
-      if (eventsError) {
-        console.error(`Error fetching events for organizer ${organizerId}:`, eventsError);
-        continue;
-      }
-      
-      if (events && events.length > 0) {
-        allEvents = [...allEvents, ...events];
-      }
-    }
-
-    // If no events found, try to find any events
-    if (allEvents.length === 0) {
-      console.log(`No events found for college: ${college}, fetching random events instead`);
+    // Fetch events with organizer names in a single query
+    const { data, error } = await supabase
+      .from('events')
+      .select(`
+        *,
+        organizers!inner (
+          id,
+          name,
+          user_id,
+          profiles!inner (
+            full_name,
+            college
+          )
+        )
+      `)
+      .eq('organizers.profiles.college', college)
+      .eq('organizers.profiles.role', 'organizer')
+      .order('created_at', { ascending: false })
+      .limit(count);
+    
+    if (error || !data || data.length === 0) {
       return getRandomEvents(count);
     }
-
-    // Shuffle and limit to count
-    const shuffled = [...allEvents].sort(() => 0.5 - Math.random());
-    const selectedEvents = shuffled.slice(0, count);
-
-    console.log(`Returning ${selectedEvents.length} events from ${allEvents.length} total events at college: ${college}`);
-
-    // Convert to display format
-    const displayEvents = await Promise.all(selectedEvents.map(convertToDisplayEvent));
+    
+    // Convert to display format with organizer names
+    const displayEvents = await Promise.all(
+      data.map((event: any) => {
+        const organizerName = event.organizers?.profiles?.full_name || event.organizers?.name || 'Unknown Organizer';
+        return convertToDisplayEvent(event, organizerName);
+      })
+    );
+    
+    // Cache the results
+    eventCache.set(cacheKey, {
+      data: displayEvents,
+      timestamp: Date.now()
+    });
+    
     return displayEvents;
   } catch (error) {
-    console.error('Error in getEventsFromCollege:', error);
-    if (error instanceof Error) {
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    }
     return getRandomEvents(count);
   }
 };
@@ -260,7 +273,17 @@ export async function getEventById(id: string): Promise<Event | null> {
     
     const { data, error } = await supabase
       .from('events')
-      .select('*')
+      .select(`
+        *,
+        organizers!inner (
+          id,
+          name,
+          user_id,
+          profiles!inner (
+            full_name
+          )
+        )
+      `)
       .eq('id', id)
       .single();
 
@@ -279,19 +302,9 @@ export async function getEventById(id: string): Promise<Event | null> {
       return null;
     }
 
-    if (!data) {
-      console.log(`No event found with ID: ${id}`);
-      return null;
-    }
-
-    console.log(`Successfully fetched event: ${data.title}`);
     return data;
   } catch (error) {
     console.error('Error in getEventById:', error);
-    if (error instanceof Error) {
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    }
     return null;
   }
 }
@@ -305,7 +318,7 @@ export async function getOrganizerNameById(id: string): Promise<string> {
     }
 
     const { data, error } = await supabase
-      .from('profile')
+      .from('profiles')
       .select('full_name')
       .eq('id', id)
       .single();
@@ -324,5 +337,43 @@ export async function getOrganizerNameById(id: string): Promise<string> {
   } catch (error) {
     console.error('Error in getOrganizerNameById:', error);
     return 'Unknown Organizer';
+  }
+}
+
+// Function to get events by category
+export async function getEventsByCategory(category: string, count: number = 8): Promise<DisplayEvent[]> {
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .select(`
+        *,
+        organizers!inner (
+          id,
+          name,
+          user_id,
+          profiles!inner (
+            full_name
+          )
+        )
+      `)
+      .eq('category', category)
+      .order('created_at', { ascending: false })
+      .limit(count);
+
+    if (error || !data) {
+      return [];
+    }
+
+    const displayEvents = await Promise.all(
+      data.map((event: Event) => {
+        const organizerName = event.organizers?.profiles?.full_name || event.organizers?.name || 'Unknown Organizer';
+        return convertToDisplayEvent(event, organizerName);
+      })
+    );
+
+    return displayEvents;
+  } catch (error) {
+    console.error('Error fetching events by category:', error);
+    return [];
   }
 } 

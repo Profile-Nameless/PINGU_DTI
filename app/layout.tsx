@@ -1,16 +1,28 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Footer } from '../components/ui/footer'
 import { Navbar } from './components/Navbar'
 import { AuthProvider } from './contexts/AuthContext'
+import { Toaster } from "@/components/ui/toaster"
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+})
+
+const spaceGrotesk = Space_Grotesk({ 
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-space-grotesk',
+  preload: true,
+})
 
 export const metadata: Metadata = {
-  title: 'PingU - College Event Management',
-  description: 'Discover and manage college events with ease',
+  title: 'PingU - Campus Events',
+  description: 'Discover and connect with campus events',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   themeColor: '#ffffff',
 }
@@ -22,8 +34,24 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head suppressHydrationWarning />
-      <body className={inter.className} suppressHydrationWarning>
+      <head suppressHydrationWarning>
+        {/* Preload critical resources */}
+        <link
+          rel="preload"
+          href="/placeholder.svg"
+          as="image"
+        />
+        <link
+          rel="preconnect"
+          href="https://fonts.googleapis.com"
+        />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+      </head>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans`} suppressHydrationWarning>
         <AuthProvider>
           <ThemeProvider
             attribute="class"
@@ -33,12 +61,11 @@ export default function RootLayout({
           >
             <div className="relative min-h-screen">
               <Navbar />
-              <div className="pt-16">
-                {children}
-              </div>
+              {children}
               <Footer />
             </div>
           </ThemeProvider>
+          <Toaster />
         </AuthProvider>
       </body>
     </html>

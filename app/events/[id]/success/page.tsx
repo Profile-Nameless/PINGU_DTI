@@ -1,110 +1,52 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { use } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Calendar, Download } from "lucide-react"
-import Link from "next/link"
-import { motion } from "framer-motion"
-import { useRouter, useParams } from "next/navigation"
+import { CheckCircle2, ArrowRight } from "lucide-react"
 
-export default function SuccessPage() {
-  const [isMounted, setIsMounted] = useState(false)
+interface EventSuccessPageProps {
+  params: Promise<{
+    id: string
+  }>
+}
+
+export default function EventSuccessPage({ params }: EventSuccessPageProps) {
   const router = useRouter()
-  const params = useParams()
-  const eventId = params?.id as string
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
-
-  // Mock event data - in a real app, fetch this based on eventId
-  const event = {
-    id: eventId,
-    title: "Tech Innovation Summit 2024",
-    date: "March 15, 2024",
-    time: "10:00 AM - 4:00 PM",
-    location: "Main Auditorium",
-    ticketNumber: "TIS-2024-" + Math.random().toString(36).substr(2, 9).toUpperCase()
-  }
-
+  const resolvedParams = use(params)
+  
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
-      <motion.div
-        initial={isMounted ? { opacity: 0, y: 20 } : false}
-        animate={isMounted ? { opacity: 1, y: 0 } : false}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-lg"
-      >
-        <div className="bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 rounded-2xl p-8 shadow-lg border border-gray-200/50 text-center">
-          {/* Success Icon */}
-          <div className="mb-6">
-            <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
-          </div>
-
-          {/* Success Message */}
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Registration Successful!</h1>
-          <p className="text-gray-600 mb-8">
-            Thank you for registering for {event.title}. Your ticket has been confirmed.
-          </p>
-
-          {/* Ticket Details */}
-          <div className="bg-gray-50 rounded-xl p-6 mb-8">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center pb-4 border-b border-gray-200">
-                <span className="text-gray-600">Ticket Number</span>
-                <span className="font-mono font-medium text-gray-900">{event.ticketNumber}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Event</span>
-                <span className="text-gray-900">{event.title}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Date & Time</span>
-                <span className="text-gray-900">{event.date}, {event.time}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Location</span>
-                <span className="text-gray-900">{event.location}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-4">
-            <Button
-              variant="outline"
-              className="border-2 border-orange-500/20 hover:bg-orange-50 hover:border-orange-500/30 text-gray-900"
-              onClick={() => {
-                // Add to calendar functionality
-              }}
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              Add to Calendar
-            </Button>
-            <Button
-              variant="outline"
-              className="border-2 border-orange-500/20 hover:bg-orange-50 hover:border-orange-500/30 text-gray-900"
-              onClick={() => {
-                // Download ticket functionality
-              }}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Download Ticket
-            </Button>
-          </div>
-
-          {/* Back to Event Link */}
-          <div className="mt-8">
-            <Button
-              variant="ghost"
-              className="text-gray-600 hover:text-gray-900"
-              onClick={() => router.push(`/events/${params.id}`)}
-            >
-              Back to Event Details
-            </Button>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 via-white to-purple-50">
+      <div className="max-w-md w-full mx-auto p-8 bg-white rounded-xl shadow-lg text-center">
+        <div className="mb-6 flex justify-center">
+          <div className="rounded-full bg-green-100 p-3">
+            <CheckCircle2 className="h-12 w-12 text-green-500" />
           </div>
         </div>
-      </motion.div>
+        
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Registration Successful!</h1>
+        <p className="text-gray-600 mb-6">
+          You have successfully registered for this event. We've sent a confirmation email with all the details.
+        </p>
+        
+        <div className="space-y-3">
+          <Button 
+            className="w-full bg-gradient-to-r from-orange-500 via-blue-600 to-purple-600 text-white hover:shadow-lg transition-all duration-300"
+            onClick={() => router.push(`/events/${resolvedParams.id}`)}
+          >
+            View Event Details
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            className="w-full border-2 border-orange-500/20 text-gray-700 hover:bg-orange-50 hover:border-orange-500/30 hover:text-black transition-all duration-300"
+            onClick={() => router.push('/dashboard')}
+          >
+            Go to Dashboard
+          </Button>
+        </div>
+      </div>
     </div>
   )
 } 

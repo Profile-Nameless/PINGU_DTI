@@ -231,10 +231,10 @@ export default function EventsDashboard() {
               
               <div className="flex justify-between items-center">
                 <div className="flex gap-2">
-                  <Link href={`/events/${event.id}`}>
+                  <Link href={`/dashboard/events/view/${event.id}`}>
                     <Button variant="outline" size="sm" className="gap-1">
                       <Eye className="h-3 w-3" />
-                      View Event
+                      View
                     </Button>
                   </Link>
                   <Link href={`/dashboard/events/edit/${event.id}`}>

@@ -1,11 +1,15 @@
+"use client"
+
+import { use } from "react"
 import EventEditor from "./EventEditor"
 
 interface EventEditorPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default function EventEditorPage({ params }: EventEditorPageProps) {
-  return <EventEditor id={params.id} />
+  const resolvedParams = use(params)
+  return <EventEditor id={resolvedParams.id} />
 } 

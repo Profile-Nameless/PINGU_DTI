@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { motion as m } from "framer-motion"
 import { domAnimation, LazyMotion } from "framer-motion"
 import { useInView } from "react-intersection-observer"
 import { Users, Calendar, Award, Zap, MessageCircle, TrendingUp } from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 const features = [
@@ -226,12 +227,13 @@ export default function AboutPage() {
             <div className="text-center text-white">
               <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
               <p className="text-xl mb-8">Join us in revolutionizing college events</p>
-              <Button 
-                onClick={() => router.push('/auth')}
-                className="bg-white hover:bg-white/90 text-gray-900 font-medium px-8 py-2 hover:shadow-lg transition-all duration-300 hover:scale-105 border-2 border-white/20"
-              >
-                Get Started
-              </Button>
+              <Link href="/auth">
+                <Button 
+                  className="bg-white hover:bg-white/90 text-gray-900 font-medium px-8 py-2 hover:shadow-lg transition-all duration-300 hover:scale-105 border-2 border-white/20"
+                >
+                  Get Started
+                </Button>
+              </Link>
             </div>
           </div>
         </m.section>

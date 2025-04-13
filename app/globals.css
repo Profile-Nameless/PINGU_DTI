@@ -2,53 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 0 0% 100%; /* White background */
-  --foreground: 0 0% 0%; /* Black text */
-  --card: 0 0% 100%; /* White card */
-  --card-foreground: 0 0% 0%; /* Black text on cards */
-  --popover: 0 0% 100%; /* White popover */
-  --popover-foreground: 0 0% 0%; /* Black text on popover */
-  --primary: 0 0% 0%; /* Black primary */
-  --primary-foreground: 0 0% 100%; /* White text on primary */
-  --secondary: 0 0% 96%; /* Light gray */
-  --secondary-foreground: 0 0% 0%; /* Black text on secondary */
-  --muted: 0 0% 96%; /* Light gray for muted areas */
-  --muted-foreground: 0 0% 45%; /* Darker gray for muted text */
-  --accent: 24 98% 51%; /* Keep orange as accent for PingU logo */
-  --accent-foreground: 0 0% 100%; /* White text on accent */
-  --destructive: 0 84% 60%; /* Keep red for destructive actions */
-  --destructive-foreground: 0 0% 100%; /* White text on destructive */
-  --border: 0 0% 90%; /* Light gray border */
-  --input: 0 0% 90%; /* Light gray input */
-  --ring: 0 0% 0%; /* Black ring */
-  --radius: 0.5rem;
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 24 98% 51%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 24 98% 51%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
 }
 
-.dark {
-  --background: 0 0% 100%; /* Keep the same for consistency */
-  --foreground: 0 0% 0%;
-  --card: 0 0% 100%;
-  --card-foreground: 0 0% 0%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 0%;
-  --primary: 0 0% 0%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 96%;
-  --secondary-foreground: 0 0% 0%;
-  --muted: 0 0% 96%;
-  --muted-foreground: 0 0% 45%;
-  --accent: 24 98% 51%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 0 0% 90%;
-  --input: 0 0% 90%;
-  --ring: 0 0% 0%;
-}
+@layer components {
+  .nav-link {
+    @apply text-black hover:text-accent transition-colors;
+  }
 
-body {
-  font-feature-settings: "rlig" 1, "calt" 1;
+  .nav-link.active {
+    @apply text-accent font-semibold;
+  }
 }
 
 @layer utilities {
@@ -61,6 +74,13 @@ body {
     @apply ml-[-50px] mt-[-4px];
     content: counter(step);
   }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
 }
 
 @media (max-width: 640px) {
@@ -70,18 +90,9 @@ body {
 }
 
 .hover-lift {
-  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+  @apply transition-all duration-300 ease-in-out;
 }
 
 .hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.nav-link {
-  @apply text-black hover:text-accent transition-colors;
-}
-
-.nav-link.active {
-  @apply text-accent font-semibold;
+  @apply -translate-y-0.5 shadow-md;
 }

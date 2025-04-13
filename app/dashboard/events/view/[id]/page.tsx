@@ -1,5 +1,6 @@
 "use client"
 
+import { use } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Eye, Edit } from "lucide-react"
@@ -7,15 +8,17 @@ import Link from "next/link"
 import Image from "next/image"
 
 interface EventViewPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default function EventViewPage({ params }: EventViewPageProps) {
+  const resolvedParams = use(params)
+  
   // Mock event data - in real app, fetch from API
   const event = {
-    id: params.id,
+    id: resolvedParams.id,
     title: "Tech Symposium 2024",
     description: "Join us for the biggest technology event of the year",
     date: "March 15, 2024",
@@ -28,13 +31,13 @@ export default function EventViewPage({ params }: EventViewPageProps) {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">View Event</h1>
         <div className="flex gap-2">
-          <Link href={`/dashboard/events/edit/${params.id}`}>
+          <Link href={`/dashboard/events/edit/${resolvedParams.id}`}>
             <Button variant="outline" size="sm" className="gap-1">
               <Edit className="h-4 w-4" />
               Edit
             </Button>
           </Link>
-          <Link href={`/dashboard/events/preview/${params.id}`}>
+          <Link href={`/dashboard/events/preview/${resolvedParams.id}`}>
             <Button variant="default" size="sm" className="gap-1">
               <Eye className="h-4 w-4" />
               Preview & Edit

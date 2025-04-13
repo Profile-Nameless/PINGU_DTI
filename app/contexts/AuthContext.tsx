@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '../utils/supabase'
 import type { UserMetadata } from '../utils/supabase'
@@ -16,14 +16,29 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Cache for user profiles to avoid repeated database calls
+const profileCache = new Map<string, { data: UserMetadata | null, timestamp: number }>()
+const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes in milliseconds
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userMetadata, setUserMetadata] = useState<UserMetadata | null>(null)
   const [loading, setLoading] = useState(true)
+  const mountedRef = useRef(false)
+  const sessionCheckedRef = useRef(false)
 
-  // Function to fetch user profile data
+  // Function to fetch user profile data with caching
   const fetchUserProfile = async (userId: string) => {
     try {
+      // Check cache first
+      const cachedProfile = profileCache.get(userId)
+      const now = Date.now()
+      
+      if (cachedProfile && (now - cachedProfile.timestamp) < CACHE_EXPIRY) {
+        console.log('Using cached profile for user:', userId)
+        return cachedProfile.data
+      }
+      
       console.log('Fetching profile for user:', userId)
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -36,8 +51,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null
       }
 
+      // Create metadata object
+      const metadata = profileData ? {
+        role: profileData.role,
+        full_name: profileData.full_name,
+        college: profileData.college
+      } : null
+      
+      // Update cache
+      profileCache.set(userId, { data: metadata, timestamp: now })
+      
       console.log('Profile data fetched:', profileData)
-      return profileData
+      return metadata
     } catch (error) {
       console.error('Error in fetchUserProfile:', error)
       return null
@@ -45,36 +70,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    mountedRef.current = true
+    
     // Check active sessions and sets the user
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setUser(session?.user ?? null)
+    const initializeAuth = async () => {
+      if (sessionCheckedRef.current) return
+      sessionCheckedRef.current = true
       
-      if (session?.user) {
-        // Try to get metadata from session first
-        const sessionMetadata = session.user.user_metadata as UserMetadata
-        if (sessionMetadata?.role) {
-          setUserMetadata(sessionMetadata)
-        } else {
-          // If no role in session metadata, fetch from profiles table
-          const profileData = await fetchUserProfile(session.user.id)
-          if (profileData) {
-            const metadata = {
-              role: profileData.role,
-              full_name: profileData.full_name,
-              college: profileData.college
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        setUser(session?.user ?? null)
+        
+        if (session?.user) {
+          // Try to get metadata from session first
+          const sessionMetadata = session.user.user_metadata as UserMetadata
+          if (sessionMetadata?.role) {
+            setUserMetadata(sessionMetadata)
+          } else {
+            // If no role in session metadata, fetch from profiles table
+            const profileData = await fetchUserProfile(session.user.id)
+            if (profileData) {
+              setUserMetadata(profileData)
             }
-            setUserMetadata(metadata)
           }
+        } else {
+          setUserMetadata(null)
         }
-      } else {
-        setUserMetadata(null)
+      } catch (error) {
+        console.error('Error initializing auth:', error)
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false)
+        }
       }
-      
-      setLoading(false)
-    })
+    }
+    
+    initializeAuth()
 
     // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mountedRef.current) return
+      
       setUser(session?.user ?? null)
       
       if (session?.user) {
@@ -86,22 +122,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // If no role in session metadata, fetch from profiles table
           const profileData = await fetchUserProfile(session.user.id)
           if (profileData) {
-            const metadata = {
-              role: profileData.role,
-              full_name: profileData.full_name,
-              college: profileData.college
-            }
-            setUserMetadata(metadata)
+            setUserMetadata(profileData)
           }
         }
       } else {
         setUserMetadata(null)
       }
       
-      setLoading(false)
+      if (mountedRef.current) {
+        setLoading(false)
+      }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mountedRef.current = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signUp = async (email: string, password: string, metadata: UserMetadata) => {
@@ -135,6 +171,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Update user metadata with profile data
       setUserMetadata(metadata)
+      
+      // Update cache
+      profileCache.set(data.user.id, { 
+        data: metadata, 
+        timestamp: Date.now() 
+      })
     }
   }
 
@@ -157,13 +199,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Update user metadata with profile data
-        const metadata = {
-          role: profileData.role,
-          full_name: profileData.full_name,
-          college: profileData.college
-        }
-        setUserMetadata(metadata)
-        return metadata
+        setUserMetadata(profileData)
+        return profileData
       }
     } catch (error) {
       console.error('Sign in error:', error)
@@ -176,6 +213,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error
     setUser(null)
     setUserMetadata(null)
+    
+    // Clear cache on sign out
+    profileCache.clear()
   }
 
   return (

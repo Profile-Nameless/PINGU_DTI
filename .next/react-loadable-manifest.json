@@ -1,4 +1,16 @@
 {
+  "app\\page.tsx -> ./components/AutoScrollCarousel": {
+    "id": "app\\page.tsx -> ./components/AutoScrollCarousel",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_AutoScrollCarousel_tsx.js"
+    ]
+  },
+  "app\\page.tsx -> ./components/CategorySection": {
+    "id": "app\\page.tsx -> ./components/CategorySection",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_CategorySection_tsx.js"
+    ]
+  },
   "node_modules\\@supabase\\auth-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch": {
     "id": "node_modules\\@supabase\\auth-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch",
     "files": []
@@ -20,11 +32,5 @@
   "node_modules\\@supabase\\storage-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch": {
     "id": "node_modules\\@supabase\\storage-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch",
     "files": []
-  },
-  "node_modules\\next\\dist\\client\\components\\react-dev-overlay\\internal\\helpers\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts": {
-    "id": "node_modules\\next\\dist\\client\\components\\react-dev-overlay\\internal\\helpers\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts",
-    "files": [
-      "static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js"
-    ]
   }
 }

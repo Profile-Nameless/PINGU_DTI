@@ -1,47 +1,31 @@
 "use client"
 
-import { useAuth } from "../contexts/AuthContext"
-import { useRouter, usePathname } from "next/navigation"
-import { useEffect } from "react"
+import { useState } from "react"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
 import {
+  PanelsTopLeft,
   Calendar,
   Users,
-  BarChart2,
-  Layout,
+  BarChart3,
+  TrendingUp,
   Settings,
   LogOut,
-  TrendingUp,
 } from "lucide-react"
-import Link from "next/link"
-
-const sideMenuItems = [
-  { icon: Layout, label: "Dashboard", href: "/organizer" },
-  { icon: Calendar, label: "Events", href: "/organizer/events" },
-  { icon: Users, label: "Registrations", href: "/organizer/registrations" },
-  { icon: BarChart2, label: "Analytics", href: "/organizer/analytics" },
-  { icon: TrendingUp, label: "Reports", href: "/organizer/reports" },
-  { icon: Settings, label: "Settings", href: "/organizer/settings" },
-]
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { useAuth } from "@/app/contexts/AuthContext"
+import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar"
 
 export default function OrganizerLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const { user, userMetadata, signOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
-
-  // Check if we're on a specific event page
-  const isEventDetailPage = pathname?.match(/^\/organizer\/events\/\d+$/)
-
-  useEffect(() => {
-    if (!user) {
-      router.push("/")
-    } else if (userMetadata?.role !== "organizer") {
-      router.push("/dashboard")
-    }
-  }, [user, userMetadata, router])
 
   const handleSignOut = async () => {
     try {
@@ -51,6 +35,9 @@ export default function OrganizerLayout({
       console.error("Error signing out:", error)
     }
   }
+
+  // Check if we're on a specific event page
+  const isEventDetailPage = pathname?.match(/^\/organizer\/events\/\d+$/)
 
   if (!user || userMetadata?.role !== "organizer") {
     return null
@@ -67,45 +54,81 @@ export default function OrganizerLayout({
     )
   }
 
-  // For all other pages, render with sidebar
+  const links = [
+    {
+      label: "Dashboard",
+      href: "/organizer",
+      icon: <PanelsTopLeft className="h-5 w-5 shrink-0 text-orange-500" />,
+    },
+    {
+      label: "Events",
+      href: "/organizer/events",
+      icon: <Calendar className="h-5 w-5 shrink-0 text-blue-600" />,
+    },
+    {
+      label: "Registrations",
+      href: "/organizer/registrations",
+      icon: <Users className="h-5 w-5 shrink-0 text-purple-600" />,
+    },
+    {
+      label: "Analytics",
+      href: "/organizer/analytics",
+      icon: <BarChart3 className="h-5 w-5 shrink-0 text-orange-500" />,
+    },
+    {
+      label: "Reports",
+      href: "/organizer/reports",
+      icon: <TrendingUp className="h-5 w-5 shrink-0 text-blue-600" />,
+    },
+    {
+      label: "Settings",
+      href: "/organizer/settings",
+      icon: <Settings className="h-5 w-5 shrink-0 text-purple-600" />,
+    },
+  ]
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Background Pattern */}
       <div className="fixed inset-0 bg-grid-pattern opacity-5 pointer-events-none" />
       
-      {/* Main Content */}
-      <div className="relative flex pt-20">
-        {/* Side Menu */}
-        <aside className="w-64 bg-white/80 backdrop-blur-sm border-r border-gray-200 px-4 py-6 min-h-screen sticky top-20">
-          <nav className="space-y-1">
-            {sideMenuItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`flex items-center gap-3 px-2 py-2 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors ${
-                  pathname === item.href ? 'bg-gray-50 text-gray-900' : ''
-                }`}
+      <div className="flex h-full">
+        <Sidebar open={isSidebarOpen} setOpen={setIsSidebarOpen}>
+          <SidebarBody className="flex flex-col h-full">
+            <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
+              <div className="mb-6">
+                <Link href="/" className="flex items-center gap-2 mb-4">
+                  <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                    PingU
+                  </span>
+                </Link>
+                <div className="space-y-1">
+                  {links.map((link) => (
+                    <SidebarLink 
+                      key={link.href} 
+                      link={link} 
+                      className={cn(
+                        pathname === link.href && "bg-gray-100 font-medium"
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-auto">
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2 text-gray-600 hover:text-red-500 hover:bg-red-50"
+                onClick={handleSignOut}
               >
-                <item.icon className="w-5 h-5" />
-                <span>{item.label}</span>
-              </Link>
-            ))}
-            <hr className="my-4" />
-            <button 
-              onClick={handleSignOut}
-              className="flex items-center gap-3 px-2 py-2 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors w-full"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Logout</span>
-            </button>
-          </nav>
-        </aside>
-
-        {/* Page Content */}
-        <main className="flex-1 p-8">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
+                <LogOut className="h-5 w-5 shrink-0" />
+                <span>Sign Out</span>
+              </Button>
+            </div>
+          </SidebarBody>
+        </Sidebar>
+        <main className="flex-1 overflow-y-auto p-8">
+          {children}
         </main>
       </div>
     </div>
