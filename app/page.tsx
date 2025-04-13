@@ -72,6 +72,8 @@ export default function LandingPage() {
   const [popularEvents, setPopularEvents] = useState<DisplayEvent[]>([])
   const [collegeEvents, setCollegeEvents] = useState<DisplayEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [showEvents, setShowEvents] = useState(false)
+  const [showCategories, setShowCategories] = useState(false)
   const [heroAnimationComplete, setHeroAnimationComplete] = useState(false)
   const { user } = useAuth()
 
@@ -124,6 +126,15 @@ export default function LandingPage() {
         setPopularEvents(popular)
         setCollegeEvents(college)
         eventsLoaded.current = true
+        setIsLoading(false)
+        // Show events section after data is loaded
+        setTimeout(() => {
+          setShowEvents(true)
+          // Show categories section after events are shown
+          setTimeout(() => {
+            setShowCategories(true)
+          }, 1000)
+        }, 500)
       }
     } catch (error) {
       console.error('Error loading events:', error)
@@ -131,10 +142,11 @@ export default function LandingPage() {
         const random = await getRandomEvents(8)
         setCollegeEvents(random)
         eventsLoaded.current = true
-      }
-    } finally {
-      if (mountedRef.current) {
         setIsLoading(false)
+        setShowEvents(true)
+        setTimeout(() => {
+          setShowCategories(true)
+        }, 1000)
       }
     }
   }, [user?.id])
@@ -145,12 +157,12 @@ export default function LandingPage() {
     setHeroAnimationComplete(true)
     setIsLoaded(true)
     
-    // Add a 2 second delay before loading events to ensure hero animation completes smoothly
+    // Add a 0.8 second delay before loading events
     setTimeout(() => {
       if (!eventsLoaded.current) {
         fetchEvents()
       }
-    }, 2000) // 2 second delay after hero animation
+    }, 800)
   }, [fetchEvents])
 
   // Load events on mount with a delay
@@ -158,13 +170,10 @@ export default function LandingPage() {
     mountedRef.current = true
     setIsMounted(true)
     
-    // Don't start loading events immediately
-    // They will be loaded after hero animation completes
-
     return () => {
       mountedRef.current = false
     }
-  }, []) // Remove fetchEvents from dependencies
+  }, [])
 
   // Add a separate effect for intersection observer based loading
   useEffect(() => {
@@ -218,7 +227,7 @@ export default function LandingPage() {
               </div>
             
               <div className="space-y-4">
-                <div className="flex space-x-1 my-6 text-2xl md:text-3xl lg:text-4xl font-medium">
+                <div className="flex justify-center my-6 text-2xl md:text-3xl lg:text-4xl font-medium">
                   <TypewriterEffectSmooth
                     words={[
                       { text: "Your", className: "text-white/90" },
@@ -273,11 +282,11 @@ export default function LandingPage() {
 
   // Memoize the events section content with proper loading states
   const eventsSection = useMemo(() => (
-    <div ref={eventsRef} className="space-y-16 py-16 bg-gradient-to-b from-white via-white to-purple-50 min-h-[400px]">
+    <div className="space-y-16 py-16 bg-gradient-to-b from-white via-white to-purple-50 min-h-[400px]">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: showEvents ? 1 : 0 }}
           transition={{ duration: 0.8, ease: "easeInOut" }}
           className="min-h-[200px]"
         >
@@ -315,18 +324,15 @@ export default function LandingPage() {
         </motion.div>
       </div>
     </div>
-  ), [isLoading, popularEvents, collegeEvents])
+  ), [isLoading, popularEvents, collegeEvents, showEvents])
 
   // Memoize the categories section with lazy loading
   const categoriesSection = useMemo(() => (
-    <div 
-      ref={categoriesRef}
-      className="py-16 bg-gradient-to-b from-purple-50 to-purple-100"
-    >
+    <div className="py-16 bg-gradient-to-b from-purple-50 to-purple-100">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: showCategories ? 1 : 0 }}
           transition={{ duration: 0.8, ease: "easeInOut" }}
         >
           {isLoading ? (
@@ -370,7 +376,7 @@ export default function LandingPage() {
         </motion.div>
       </div>
     </div>
-  ), [isLoading])
+  ), [isLoading, showCategories])
 
   return (
     <main className="min-h-screen w-full bg-gradient-to-b from-white via-white to-purple-100">

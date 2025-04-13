@@ -27,6 +27,9 @@ export default function OrganizerLayout({
   const router = useRouter()
   const pathname = usePathname()
 
+  const displayName = userMetadata?.full_name || user?.email || 'User'
+  const displayInitial = displayName[0].toUpperCase()
+
   const handleSignOut = async () => {
     try {
       await signOut()
@@ -88,7 +91,7 @@ export default function OrganizerLayout({
   ]
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="fixed inset-0 bg-white">
       {/* Background Pattern */}
       <div className="fixed inset-0 bg-grid-pattern opacity-5 pointer-events-none" />
       
@@ -97,9 +100,12 @@ export default function OrganizerLayout({
           <SidebarBody className="flex flex-col h-full">
             <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
               <div className="mb-6">
-                <Link href="/" className="flex items-center gap-2 mb-4">
-                  <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                    PingU
+                <Link href="/" className="flex items-center gap-2 mb-4 px-3">
+                  <span className={cn(
+                    "font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent transition-all duration-200",
+                    isSidebarOpen ? "text-3xl" : "text-2xl"
+                  )}>
+                    {isSidebarOpen ? "PingU" : "P"}
                   </span>
                 </Link>
                 <div className="space-y-1">
@@ -116,19 +122,39 @@ export default function OrganizerLayout({
               </div>
             </div>
             <div className="mt-auto">
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-2 text-gray-600 hover:text-red-500 hover:bg-red-50"
-                onClick={handleSignOut}
-              >
-                <LogOut className="h-5 w-5 shrink-0" />
-                <span>Sign Out</span>
-              </Button>
+              <div className="px-3 py-2 border-t border-gray-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-medium flex-shrink-0">
+                    {displayInitial}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-700 truncate">
+                      {displayName}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      Organizer
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full h-9 justify-start text-gray-600 hover:text-red-500 hover:bg-red-50"
+                  onClick={handleSignOut}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <LogOut className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">Sign Out</span>
+                  </div>
+                </Button>
+              </div>
             </div>
           </SidebarBody>
         </Sidebar>
-        <main className="flex-1 overflow-y-auto p-8">
-          {children}
+        <main className="flex-1 overflow-hidden pl-8 pt-3 pb-3 pr-0 bg-white">
+          <div className="bg-gray-100 rounded-l-xl border border-gray-200 p-3 h-[calc(100vh-1.5rem)] mr-0 w-full overflow-y-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>

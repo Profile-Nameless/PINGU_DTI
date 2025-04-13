@@ -23,9 +23,11 @@ import {
   User,
   CreditCard,
   Save,
+  Upload,
 } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { toast } from "sonner";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface SettingsSection {
   id: string;
@@ -78,6 +80,7 @@ export default function SettingsPage() {
     contactEmail: user?.email || "",
     language: "en",
     timezone: "UTC",
+    profilePicture: "",
 
     // Notification Settings
     emailNotifications: true,
@@ -103,6 +106,21 @@ export default function SettingsPage() {
     }));
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      // Here you would typically upload the file to your storage service
+      // For now, we'll create a local URL
+      const imageUrl = URL.createObjectURL(file);
+      handleSettingChange("profilePicture", imageUrl);
+      toast.success("Profile picture updated successfully");
+    } catch (error) {
+      toast.error("Failed to upload profile picture");
+    }
+  };
+
   const saveSettings = async () => {
     try {
       setIsLoading(true);
@@ -121,14 +139,34 @@ export default function SettingsPage() {
       case "profile":
         return (
           <div className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="organizerName">Organizer Name</Label>
-              <Input
-                id="organizerName"
-                value={settings.organizerName}
-                onChange={(e) => handleSettingChange("organizerName", e.target.value)}
-                placeholder="Enter your organizer name"
-              />
+            <div className="flex items-center gap-6">
+              <div className="relative">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-4xl font-medium">
+                  {settings.organizerName ? settings.organizerName[0].toUpperCase() : "U"}
+                </div>
+                <label
+                  htmlFor="profile-picture"
+                  className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-lg cursor-pointer hover:bg-gray-50"
+                >
+                  <Upload className="h-4 w-4 text-gray-600" />
+                  <input
+                    id="profile-picture"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                </label>
+              </div>
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="organizerName">Organizer Name</Label>
+                <Input
+                  id="organizerName"
+                  value={settings.organizerName}
+                  onChange={(e) => handleSettingChange("organizerName", e.target.value)}
+                  placeholder="Enter your organizer name"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="organizerBio">Bio</Label>

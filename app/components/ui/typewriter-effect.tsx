@@ -93,14 +93,14 @@ export const TypewriterEffectSmooth = ({
   // If animation has already played, render the text without animation
   if (showCursor) {
     return (
-      <div className={cn("flex items-center gap-1", className)}>
+      <div className={cn("flex items-center justify-center gap-1", className)}>
         <div className="inline-block">
           {words.map((word, idx) => (
             <div key={word.text} className="inline-block">
               <span className={cn("", word.className)}>
                 {word.text}
               </span>
-              {idx < words.length - 1 ? "\u00A0" : ""}
+              {idx < words.length - 1 ? <span className="mx-1">&nbsp;</span> : ""}
             </div>
           ))}
           <span className="text-gray-200">.</span>
@@ -111,7 +111,7 @@ export const TypewriterEffectSmooth = ({
 
   // Otherwise, render with animation
   return (
-    <div className={cn("flex items-center gap-1", className)}>
+    <div className={cn("flex items-center justify-center gap-1", className)}>
       <AnimatePresence mode="wait">
         <motion.div
           className="inline-block"
@@ -133,7 +133,7 @@ export const TypewriterEffectSmooth = ({
                 >
                   {word.text}
                 </motion.span>
-                {idx < words.length - 1 ? "\u00A0" : ""}
+                {idx < words.length - 1 ? <span className="mx-1">&nbsp;</span> : ""}
               </div>
             );
           })}

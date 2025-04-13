@@ -13,6 +13,26 @@ import { getEventById, Event } from '@/app/utils/events';
 import { supabase } from '@/app/utils/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
+// Add the getStatusColor function
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'upcoming':
+      return 'from-blue-500 to-indigo-600'
+    case 'ongoing':
+      return 'from-green-500 to-emerald-600'
+    case 'completed':
+      return 'from-purple-500 to-pink-600'
+    case 'cancelled':
+      return 'from-red-500 to-rose-600'
+    case 'published':
+      return 'from-green-500 to-emerald-600'
+    case 'draft':
+      return 'from-blue-500 to-indigo-600'
+    default:
+      return 'from-gray-500 to-slate-600'
+  }
+}
+
 export default function EventDetails() {
   const params = useParams();
   const eventId = params?.id as string;
@@ -137,7 +157,7 @@ export default function EventDetails() {
                 Back to Dashboard
               </Button>
             </Link>
-            <Badge variant={displayEvent.status === 'active' ? 'default' : 'secondary'} className="ml-2 bg-gradient-to-r from-blue-500 to-indigo-500">
+            <Badge variant={displayEvent.status === 'active' ? 'default' : 'secondary'} className={`ml-2 bg-gradient-to-r ${getStatusColor(displayEvent.status)}`}>
               {displayEvent.status}
             </Badge>
           </div>

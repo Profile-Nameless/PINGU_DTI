@@ -17,6 +17,7 @@ import {
   Download,
   ArrowUpRight,
   ArrowDownRight,
+  HelpCircle,
 } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -35,6 +36,12 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { supabase } from "@/app/utils/supabase"
 import { toast } from "sonner"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface Event {
   id: string
@@ -511,16 +518,71 @@ export default function OrganizerDashboard() {
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-gray-500" />
                 <h2 className="text-xl font-semibold text-gray-900">Recent & Important Events</h2>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <HelpCircle className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="p-4 max-w-[500px] bg-black/50 text-white backdrop-blur-sm border-0">
+                      <div className="flex gap-6">
+                        <div>
+                          <h4 className="font-medium mb-2 text-white/90">Progress Colors</h4>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-green-500 to-emerald-600" />
+                              <span className="text-sm text-white/80">≥75% filled</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600" />
+                              <span className="text-sm text-white/80">≥50% filled</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-yellow-500 to-amber-600" />
+                              <span className="text-sm text-white/80">≥25% filled</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-red-500 to-rose-600" />
+                              <span className="text-sm text-white/80">&lt;25% filled</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-medium mb-2 text-white/90">Event Status Colors</h4>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600" />
+                              <span className="text-sm text-white/80">Upcoming/Draft</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-green-500 to-emerald-600" />
+                              <span className="text-sm text-white/80">Ongoing/Published</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-600" />
+                              <span className="text-sm text-white/80">Completed</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-red-500 to-rose-600" />
+                              <span className="text-sm text-white/80">Cancelled</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/organizer/events" className="text-blue-600 hover:text-blue-700">
                   View All
                   <ChevronRight className="w-4 h-4 ml-1" />
                 </Link>
-                </Button>
-              </div>
+              </Button>
             </div>
-            <div className="divide-y divide-gray-100">
+          </div>
+          <div className="divide-y divide-gray-100">
             {isLoading ? (
               // Loading skeleton
               Array(5).fill(0).map((_, i) => (
@@ -599,12 +661,12 @@ export default function OrganizerDashboard() {
                           View
                           <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
-                        </div>
+                      </div>
                     </motion.div>
                   );
                 })
             )}
-                        </div>
+          </div>
         </Card>
 
         {/* Sidebar */}
@@ -636,12 +698,12 @@ export default function OrganizerDashboard() {
                   </div>
                 );
               })}
-                </div>
+            </div>
           </Card>
 
           {/* Quick Actions */}
           <Card className="p-6 border border-gray-100 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+            <h2 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h2>
             <div className="space-y-3">
               <Button variant="outline" className="w-full justify-start gap-2" asChild>
                 <Link href="/organizer/events/new">
