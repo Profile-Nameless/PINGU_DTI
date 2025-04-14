@@ -403,12 +403,23 @@ export async function getEventById(id: string): Promise<Event | null> {
     const { data, error } = await supabase
       .from('events')
       .select(`
-        *,
-        organizers!inner (
+        id,
+        organizer_id,
+        status,
+        event_details (
+          title,
+          date,
+          start_time,
+          venue,
+          category,
+          registrations,
+          capacity
+        ),
+        organizers (
           id,
           name,
           user_id,
-          profiles!inner (
+          profiles (
             full_name
           )
         )
@@ -437,6 +448,7 @@ export async function getEventById(id: string): Promise<Event | null> {
     return null;
   }
 }
+
 
 // Function to get organizer name by ID
 export async function getOrganizerNameById(id: string): Promise<string> {

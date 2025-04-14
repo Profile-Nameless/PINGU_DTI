@@ -98,10 +98,40 @@ export default function EventDetails() {
       
       setIsLoading(true);
       try {
-        const eventData = await getEventById(eventId);
+        const { data: eventData, error } = await supabase
+          .from('events')
+          .select(`
+            id,
+            organizer_id,
+            status,
+            event_details!inner (
+              title,
+              date,
+              start_time,
+              venue,
+              category,
+              current_registrations,
+              capacity
+            )
+          `)
+          .eq('id', eventId)
+          .single();
+
+        if (error) throw error;
         
         if (eventData) {
-          setEvent(eventData);
+          setEvent({
+            id: eventData.id,
+            title: eventData.event_details?.[0]?.title || '',
+            date: eventData.event_details?.[0]?.date || '',
+            time: eventData.event_details?.[0]?.start_time || '',
+            location: eventData.event_details?.[0]?.venue?.room || '',
+            status: eventData.status || 'draft',
+            registrations: eventData.event_details?.[0]?.current_registrations || 0,
+            capacity: eventData.event_details?.[0]?.capacity || 0,
+            description: ''
+          });
+          console.log(eventData);
         } else {
           console.log('No event found, using mock data');
           setEvent(mockEvent as any);
@@ -148,15 +178,15 @@ export default function EventDetails() {
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
-            <Link href="/organizer">
+        <Link href="/organizer">
               <Button 
                 variant="outline" 
                 className="bg-white/80 hover:bg-blue-50 border-blue-300 text-blue-700 font-medium px-4 py-2 shadow-sm transition-all duration-300 hover:shadow-md"
               >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Dashboard
-              </Button>
-            </Link>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+        </Link>
             <Badge variant={displayEvent.status === 'active' ? 'default' : 'secondary'} className={`ml-2 bg-gradient-to-r ${getStatusColor(displayEvent.status)}`}>
               {displayEvent.status}
             </Badge>
@@ -233,7 +263,7 @@ export default function EventDetails() {
                 <Users className="w-6 h-6 text-blue-500" />
               </div>
             </div>
-          </Card>
+        </Card>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -252,7 +282,7 @@ export default function EventDetails() {
                 <CheckCircle className="w-6 h-6 text-green-500" />
               </div>
             </div>
-          </Card>
+        </Card>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -271,7 +301,7 @@ export default function EventDetails() {
                 <AlertCircle className="w-6 h-6 text-yellow-500" />
               </div>
             </div>
-          </Card>
+        </Card>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -290,7 +320,7 @@ export default function EventDetails() {
                 <DollarSign className="w-6 h-6 text-purple-500" />
               </div>
             </div>
-          </Card>
+        </Card>
         </motion.div>
       </div>
 
@@ -304,7 +334,7 @@ export default function EventDetails() {
         >
           <Card className="p-6 shadow-sm hover:shadow-lg transition-all duration-300 bg-white/80 backdrop-blur-sm overflow-hidden relative">
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-100/30 to-transparent rounded-bl-full -z-10"></div>
-            <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100">
                   <TrendingUp className="w-5 h-5 text-blue-500" />
@@ -312,10 +342,10 @@ export default function EventDetails() {
                 <h2 className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Registration Trend</h2>
               </div>
               <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-full">
-                View All
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
+              View All
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
             <div className="h-[300px] bg-gradient-to-br from-blue-50/50 to-indigo-50/50 rounded-lg p-4 border border-blue-100/50">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
@@ -349,8 +379,8 @@ export default function EventDetails() {
                   </defs>
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-          </Card>
+          </div>
+        </Card>
         </motion.div>
 
         {/* Demographics */}
@@ -361,7 +391,7 @@ export default function EventDetails() {
         >
           <Card className="p-6 shadow-sm hover:shadow-lg transition-all duration-300 bg-white/80 backdrop-blur-sm overflow-hidden relative">
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-100/30 to-transparent rounded-bl-full -z-10"></div>
-            <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100">
                   <PieChart className="w-5 h-5 text-indigo-500" />
@@ -392,8 +422,8 @@ export default function EventDetails() {
                   onClick={() => setDemographicsView('mixed')}
                 >
                   Mixed
-                </Button>
-              </div>
+            </Button>
+          </div>
             </div>
             <div className="h-[300px] bg-gradient-to-br from-indigo-50/50 to-purple-50/50 rounded-lg p-4 border border-indigo-100/50">
               <ResponsiveContainer width="100%" height="100%">
@@ -422,8 +452,8 @@ export default function EventDetails() {
                   />
                 </RechartsPieChart>
               </ResponsiveContainer>
-            </div>
-          </Card>
+          </div>
+        </Card>
         </motion.div>
 
         {/* Recent Registrations */}
@@ -434,7 +464,7 @@ export default function EventDetails() {
         >
           <Card className="p-6 shadow-sm hover:shadow-lg transition-all duration-300 bg-white/80 backdrop-blur-sm overflow-hidden relative">
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-green-100/30 to-transparent rounded-bl-full -z-10"></div>
-            <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-full bg-gradient-to-br from-green-100 to-emerald-100">
                   <UserPlus className="w-5 h-5 text-green-500" />
@@ -442,30 +472,30 @@ export default function EventDetails() {
                 <h2 className="text-xl font-semibold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Recent Registrations</h2>
               </div>
               <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700 hover:bg-green-50 rounded-full">
-                View All
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
+              View All
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
                 <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100 hover:bg-gradient-to-r hover:from-green-50/50 hover:to-emerald-50/50 px-3 rounded-md transition-colors">
-                  <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center text-green-600 font-medium">
-                      {i}
-                    </div>
-                    <div>
-                      <p className="font-medium">Student {i}</p>
-                      <p className="text-sm text-gray-500">Computer Science • 3rd Year</p>
-                    </div>
+                    {i}
                   </div>
-                  <div className="flex flex-col items-end">
-                    <p className="text-sm text-gray-500">2 hours ago</p>
-                    <Badge variant="outline" className="mt-1 bg-green-50 text-green-700 border-green-200">Registered</Badge>
+                <div>
+                  <p className="font-medium">Student {i}</p>
+                  <p className="text-sm text-gray-500">Computer Science • 3rd Year</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </Card>
+                <div className="flex flex-col items-end">
+                <p className="text-sm text-gray-500">2 hours ago</p>
+                    <Badge variant="outline" className="mt-1 bg-green-50 text-green-700 border-green-200">Registered</Badge>
+                  </div>
+              </div>
+            ))}
+          </div>
+        </Card>
         </motion.div>
 
         {/* Event Timeline */}
@@ -476,7 +506,7 @@ export default function EventDetails() {
         >
           <Card className="p-6 shadow-sm hover:shadow-lg transition-all duration-300 bg-white/80 backdrop-blur-sm overflow-hidden relative">
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-100/30 to-transparent rounded-bl-full -z-10"></div>
-            <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100">
                   <Clock className="w-5 h-5 text-purple-500" />
@@ -484,27 +514,27 @@ export default function EventDetails() {
                 <h2 className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">Event Timeline</h2>
               </div>
               <Button variant="ghost" size="sm" className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-full">
-                Edit Timeline
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-            <div className="space-y-4">
-              {[
-                { time: '09:00 AM', title: 'Registration Opens', status: 'upcoming' },
-                { time: '10:00 AM', title: 'Opening Ceremony', status: 'upcoming' },
-                { time: '11:00 AM', title: 'Keynote Speech', status: 'upcoming' },
-                { time: '12:00 PM', title: 'Lunch Break', status: 'upcoming' },
-              ].map((item, i) => (
+              Edit Timeline
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+          <div className="space-y-4">
+            {[
+              { time: '09:00 AM', title: 'Registration Opens', status: 'upcoming' },
+              { time: '10:00 AM', title: 'Opening Ceremony', status: 'upcoming' },
+              { time: '11:00 AM', title: 'Keynote Speech', status: 'upcoming' },
+              { time: '12:00 PM', title: 'Lunch Break', status: 'upcoming' },
+            ].map((item, i) => (
                 <div key={i} className="flex items-start p-3 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-indigo-50/50 rounded-md transition-colors">
-                  <div className="w-24 text-sm font-medium text-gray-700">{item.time}</div>
-                  <div className="flex-1">
-                    <p className="font-medium">{item.title}</p>
+                <div className="w-24 text-sm font-medium text-gray-700">{item.time}</div>
+                <div className="flex-1">
+                  <p className="font-medium">{item.title}</p>
                     <Badge variant="outline" className="mt-1 text-xs bg-purple-50 text-purple-700 border-purple-200">{item.status}</Badge>
                   </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+              </div>
+            ))}
+          </div>
+        </Card>
         </motion.div>
       </div>
     </div>

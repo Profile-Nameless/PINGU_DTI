@@ -1,29 +1,32 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
   Calendar,
+  Users,
+  BarChart2,
+  PlusCircle,
   Clock,
   MapPin,
+  TrendingUp,
   ChevronRight,
-  PlusCircle,
   Search,
   Filter,
   Download,
+  ArrowUpRight,
+  ArrowDownRight,
+  HelpCircle,
   Eye,
   Edit,
   Trash2,
-  Users,
-  BarChart2,
-  TrendingUp,
-  Plus,
-  MoreVertical,
-  HelpCircle,
 } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
+import { useRouter } from "next/navigation"
+import type React from "react"
+import { useAuth } from "../../contexts/AuthContext"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -34,15 +37,7 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { useRouter } from "next/navigation"
 import { supabase } from "@/app/utils/supabase"
-import { useAuth } from "@/app/contexts/AuthContext"
 import { toast } from "sonner"
 import {
   Tooltip,
@@ -52,16 +47,33 @@ import {
 } from "@/components/ui/tooltip"
 
 interface Event {
-  id: string
-  title: string
-  description: string
-  date: string
-  time: string
-  location: string
-  status: string
-  registrations: number
-  capacity: number
-  category: string
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  location: string;
+  status: string;
+  registrations: number;
+  capacity: number;
+  category: string;
+}
+
+interface EventDetails {
+  title: string;
+  date: string;
+  start_time: string;
+  venue: string;
+  category: string;
+  current_registrations: number;
+  capacity: number;
+}
+
+interface EventWithDetails {
+  id: string;
+  organizer_id: string;
+  status: string;
+  event_details: EventDetails[];
 }
 
 // Update the getStatusColor function to match the dashboard
@@ -155,6 +167,7 @@ export default function EventsPage() {
   const [categoryFilter, setCategoryFilter] = useState("all")
   const router = useRouter()
   const { user } = useAuth()
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -164,81 +177,64 @@ export default function EventsPage() {
 
   const fetchEvents = async () => {
     try {
-      setIsLoading(true)
-      console.log('Starting fetchEvents...')
-      
-      if (!user?.id) {
-        console.error('No user ID available')
-        setEvents([])
-        return
-      }
-      console.log('User ID:', user.id)
+      setIsLoading(true);
+      setError(null);
 
       // First get the organizer record
-      console.log('Fetching organizer record...')
       const { data: organizerData, error: organizerError } = await supabase
         .from('organizers')
-        .select('id, name')
-        .eq('user_id', user.id)
-        .single()
+        .select('id')
+        .eq('user_id', user?.id)
+        .single();
 
-      console.log('Organizer query result:', { organizerData, organizerError })
+      if (organizerError) throw organizerError;
+      if (!organizerData) throw new Error('No organizer found');
 
-      if (organizerError) {
-        console.error('Error fetching organizer:', organizerError)
-        throw organizerError
-      }
-
-      if (!organizerData) {
-        console.error('No organizer record found for user')
-        setEvents([])
-        return
-      }
-
-      console.log('Found organizer:', organizerData)
-
-      // Then get events for this organizer
-      console.log('Fetching events for organizer:', organizerData.id)
-      const { data: eventsData, error: eventsError } = await supabase
+      // Fetch events with their details using an inner join
+      const { data: events, error: eventsError } = await supabase
         .from('events')
-        .select('*')
-        .eq('organizer_id', organizerData.id)
-        .order('date', { ascending: true })
+        .select(`
+          id,
+          organizer_id,
+          status,
+          event_details!inner (
+            title,
+            date,
+            start_time,
+            venue,
+            category,
+            current_registrations,
+            capacity
+          )
+        `)
+        .eq('organizer_id', organizerData.id);
 
-      console.log('Events query result:', { 
-        eventsCount: eventsData?.length,
-        firstEvent: eventsData?.[0],
-        error: eventsError 
-      })
+      if (eventsError) throw eventsError;
 
-      if (eventsError) {
-        console.error('Error fetching events:', eventsError)
-        throw eventsError
-      }
+      // Process events for display with null checks and sort by date
+      const processedEvents: Event[] = events
+        .map((event: EventWithDetails) => ({
+          id: event.id,
+          title: event.event_details?.[0]?.title || 'Untitled Event',
+          description: '', // Add description if needed
+          date: event.event_details?.[0]?.date || '',
+          time: event.event_details?.[0]?.start_time || '',
+          location: event.event_details?.[0]?.venue || '',
+          status: event.status || 'draft',
+          registrations: event.event_details?.[0]?.current_registrations || 0,
+          capacity: event.event_details?.[0]?.capacity || 0,
+          category: event.event_details?.[0]?.category || 'uncategorized'
+        }))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      if (!eventsData) {
-        console.log('No events found for organizer')
-        setEvents([])
-        return
-      }
-
-      console.log('Successfully fetched events:', eventsData)
-      setEvents(eventsData)
+      setEvents(processedEvents);
     } catch (error) {
-      console.error('Error in fetchEvents:', error)
-      if (error instanceof Error) {
-        console.error('Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
-        })
-      }
-      toast.error('Failed to fetch events. Please try again.')
-      setEvents([])
+      console.error('Error fetching events:', error);
+      setError('Failed to fetch events');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const deleteEvent = async (eventId: string) => {
     try {
@@ -266,8 +262,7 @@ export default function EventsPage() {
   const totalRegistrations = events.reduce((sum, event) => sum + (event.registrations || 0), 0);
 
   const filteredEvents = events.filter(event => {
-    const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = statusFilter === "all" || event.status.toLowerCase() === statusFilter
     const matchesCategory = categoryFilter === "all" || event.category === categoryFilter
     return matchesSearch && matchesStatus && matchesCategory
@@ -513,7 +508,6 @@ export default function EventsPage() {
                           {event.category}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{event.description}</p>
                       <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4 text-blue-500" />
@@ -522,10 +516,6 @@ export default function EventsPage() {
                         <div className="flex items-center gap-1">
                           <Clock className="w-4 h-4 text-purple-500" />
                           <span>{event.time}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4 text-red-500" />
-                          <span>{event.location}</span>
                         </div>
                       </div>
                     </div>

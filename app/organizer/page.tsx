@@ -56,6 +56,23 @@ interface Event {
   category: string
 }
 
+interface EventDetails {
+  title: string
+  date: string
+  start_time: string
+  venue: string
+  category: string
+  current_registrations: number
+  capacity: number
+}
+
+interface EventWithDetails {
+  id: string
+  organizer_id: string
+  status: string
+  event_details: EventDetails[]
+}
+
 // Helper function to check if an event is upcoming
 const isUpcomingEvent = (eventDate: string) => {
   const today = new Date();
@@ -88,6 +105,7 @@ export default function OrganizerDashboard() {
   const mountedRef = useRef(false)
   const dataFetchedRef = useRef(false)
   const organizerIdRef = useRef<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     mountedRef.current = true
@@ -113,94 +131,64 @@ export default function OrganizerDashboard() {
 
   const fetchEvents = async () => {
     try {
-      if (dataFetchedRef.current) return
-      dataFetchedRef.current = true
-      
-      setIsLoading(true)
-      console.log('Starting fetchEvents...')
-      
-      if (!user?.id) {
-        console.error('No user ID available')
-        setEvents([])
-        return
-      }
-      console.log('User ID:', user.id)
+      setIsLoading(true);
+      setError(null);
 
       // First get the organizer record
-      console.log('Fetching organizer record...')
       const { data: organizerData, error: organizerError } = await supabase
         .from('organizers')
-        .select('id, name')
-        .eq('user_id', user.id)
-        .single()
+        .select('id')
+        .eq('user_id', user?.id)
+        .single();
 
-      if (organizerError) {
-        console.error('Error fetching organizer:', organizerError)
-        setIsLoading(false)
-        return
-      }
+      if (organizerError) throw organizerError;
+      if (!organizerData) throw new Error('No organizer found');
 
-      if (!organizerData) {
-        console.error('No organizer found for user')
-        setIsLoading(false)
-        return
-      }
-
-      organizerIdRef.current = organizerData.id
-      console.log('Organizer ID:', organizerData.id)
-
-      // Then fetch events for this organizer
-      console.log('Fetching events for organizer...')
-      const { data: eventsData, error: eventsError } = await supabase
+      // Fetch events with their details using an inner join
+      const { data: events, error: eventsError } = await supabase
         .from('events')
-        .select('*')
-        .eq('organizer_id', organizerData.id)
-        .order('date', { ascending: true })
+        .select(`
+          id,
+          organizer_id,
+          status,
+          event_details!inner (
+            title,
+            date,
+            start_time,
+            venue,
+            category,
+            current_registrations,
+            capacity
+          )
+        `)
+        .eq('organizer_id', organizerData.id);
 
-      if (eventsError) {
-        console.error('Error fetching events:', eventsError)
-        setIsLoading(false)
-        return
-      }
+      if (eventsError) throw eventsError;
 
-      if (!mountedRef.current) return
+      // Process events for display with null checks and sort by date
+      const processedEvents: Event[] = events
+        .map((event: EventWithDetails) => ({
+          id: event.id,
+          title: event.event_details?.[0]?.title || 'Untitled Event',
+          description: '', // Add description if needed
+          date: event.event_details?.[0]?.date || '',
+          time: event.event_details?.[0]?.start_time || '',
+          location: event.event_details?.[0]?.venue || '',
+          status: event.status || 'draft',
+          registrations: event.event_details?.[0]?.current_registrations || 0,
+          capacity: event.event_details?.[0]?.capacity || 0,
+          category: event.event_details?.[0]?.category || 'uncategorized'
+        }))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      // Process events data
-      const processedEvents = eventsData.map(event => ({
-        id: event.id,
-        title: event.title,
-        description: event.description,
-        date: new Date(event.date).toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }),
-        time: new Date(event.date).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        location: event.location,
-        status: event.status || 'draft',
-        registrations: event.registrations || 0,
-        capacity: event.capacity || 100,
-        category: event.category
-      }))
-
-      // Update cache
-      organizerEventsCache.data = processedEvents
-      organizerEventsCache.timestamp = Date.now()
-
-      setEvents(processedEvents)
-      updateStats(processedEvents)
+      setEvents(processedEvents);
     } catch (error) {
-      console.error('Error in fetchEvents:', error)
+      console.error('Error fetching events:', error);
+      setError('Failed to fetch events');
     } finally {
-      if (mountedRef.current) {
-        setIsLoading(false)
-      }
+      setIsLoading(false);
     }
-  }
+  };
 
   const updateStats = (eventsList: Event[]) => {
     if (!mountedRef.current) return

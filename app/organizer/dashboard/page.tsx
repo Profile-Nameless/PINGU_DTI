@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import { supabase } from "@/app/utils/supabase";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { toast } from "react-hot-toast";
 
 interface DashboardStats {
   totalEvents: number;
@@ -21,57 +22,69 @@ interface DashboardStats {
   upcomingEvents: number;
 }
 
+interface Event {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  status: string;
+  registrations: number;
+  capacity: number;
+  category: string;
+}
+
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
     totalEvents: 0,
     activeEvents: 0,
     totalRegistrations: 0,
     upcomingEvents: 0,
   });
-
-  const [recentEvents, setRecentEvents] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
-
-  useEffect(() => {
-    if (user?.id) {
-      fetchDashboardData(user.id);
-    }
-  }, [user]);
+  const [recentEvents, setRecentEvents] = useState<Event[]>([]);
 
   const fetchDashboardData = async (userId: string) => {
     try {
       setIsLoading(true);
 
-      // Fetch events with event_details to get date
+      // First get the organizer record
+      const { data: organizerData, error: organizerError } = await supabase
+        .from('organizers')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+
+      if (organizerError) throw organizerError;
+      if (!organizerData) throw new Error('No organizer found');
+
+      // Fetch events with their details using an inner join
       const { data: events, error: eventsError } = await supabase
         .from('events')
         .select(`
-          *,
-          event_details (
-            date
+          id,
+          organizer_id,
+          status,
+          event_details!inner (
+            title,
+            date,
+            start_time,
+            venue,
+            category,
+            current_registrations,
+            capacity
           )
         `)
-        .eq('organizer_id', userId)
-        .order('created_at', { ascending: false });
+        .eq('organizer_id', organizerData.id)
+        .order('date', { ascending: false });
 
       if (eventsError) throw eventsError;
-
-      const eventIds = events?.map(event => event.id) || [];
-
-      // Get total registrations
-      const { data: registrations, error: registrationsError } = await supabase
-        .from('registrations')
-        .select('event_id')
-        .in('event_id', eventIds);
-
-      if (registrationsError) throw registrationsError;
 
       // Calculate stats
       const now = new Date();
 
       const activeEvents = events.filter(event => {
-        const dateStr = event?.event_details?.date;
+        const dateStr = event.event_details?.[0]?.date;
         if (!dateStr) return false;
         return new Date(dateStr) >= now;
       });
@@ -79,17 +92,36 @@ export default function DashboardPage() {
       setStats({
         totalEvents: events.length,
         activeEvents: activeEvents.length,
-        totalRegistrations: registrations.length,
+        totalRegistrations: events.reduce((sum, event) => sum + (event.event_details?.[0]?.current_registrations || 0), 0),
         upcomingEvents: activeEvents.slice(0, 5).length,
       });
 
-      setRecentEvents(events.slice(0, 5));
+      // Process events for display
+      const processedEvents = events.map(event => ({
+        id: event.id,
+        title: event.event_details?.[0]?.title || '',
+        date: event.event_details?.[0]?.date || '',
+        time: event.event_details?.[0]?.start_time || '',
+        status: event.status,
+        registrations: event.event_details?.[0]?.current_registrations || 0,
+        capacity: event.event_details?.[0]?.capacity || 0,
+        category: event.event_details?.[0]?.category || ''
+      }));
+
+      setRecentEvents(processedEvents.slice(0, 5));
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      toast.error('Failed to fetch dashboard data');
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchDashboardData(user.id);
+    }
+  }, [user?.id]);
 
   const statCards = [
     {
