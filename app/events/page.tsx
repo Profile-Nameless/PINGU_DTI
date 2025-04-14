@@ -40,6 +40,9 @@ export default function BrowseEvents() {
   const [categories, setCategories] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
   const [timeFilter, setTimeFilter] = useState<'upcoming' | 'popular' | 'past'>('upcoming')
+  const [attendeesFilter, setAttendeesFilter] = useState<string>('')
+  const [startDate, setStartDate] = useState<string>('')
+  const [endDate, setEndDate] = useState<string>('')
   const router = useRouter()
   const mountedRef = useRef(false)
   const dataFetchedRef = useRef(false)
@@ -77,7 +80,29 @@ export default function BrowseEvents() {
       const { data, error } = await supabase
         .from('events')
         .select(`
-          *,
+          id,
+          organizer_id,
+          status,
+          created_at,
+          updated_at,
+          event_details!inner (
+            title,
+            description,
+            date,
+            start_time,
+            end_time,
+            location,
+            venue,
+            cover_image,
+            gallery,
+            category,
+            current_registrations,
+            capacity,
+            price,
+            eligibility,
+            rules,
+            schedule
+          ),
           organizers!inner (
             id,
             name,
@@ -95,31 +120,33 @@ export default function BrowseEvents() {
       if (!mountedRef.current) return
 
       // Extract unique categories
-      const uniqueCategories = Array.from(new Set(data.map(event => event.category)))
+      const uniqueCategories = Array.from(new Set(data.map(event => event.event_details[0].category)))
       setCategories(uniqueCategories)
 
       // Convert to DisplayEvent format
-      const displayEvents = data.map(event => ({
-        id: event.id,
-        title: event.title,
-        date: new Date(event.date).toLocaleDateString('en-US', { 
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }),
-        time: new Date(event.date).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        venue: event.venue,
-        location: event.location,
-        category: event.category,
-        image: event.image || getRandomPlaceholderImage(),
-        organizer: event.organizers?.profiles?.full_name || event.organizers?.name || 'Unknown Organizer',
-        attendees: event.registrations || 0,
-        rawDate: new Date(event.date) // Store raw date for filtering
-      }))
+      const displayEvents = data.map(event => {
+        const eventDetail = event.event_details[0];
+        const organizer = event.organizers[0];
+        return {
+          id: event.id,
+          title: eventDetail.title,
+          date: new Date(eventDetail.date).toLocaleDateString('en-US', { 
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          }),
+          time: eventDetail.start_time,
+          venue: eventDetail.venue,
+          location: eventDetail.location,
+          category: eventDetail.category,
+          image: eventDetail.cover_image || getRandomPlaceholderImage(),
+          organizer: organizer?.profiles?.[0]?.full_name || organizer?.name || 'Unknown Organizer',
+          attendees: eventDetail.current_registrations || 0,
+          capacity: eventDetail.capacity || 0,
+          rawDate: new Date(eventDetail.date) // Store raw date for filtering
+        }
+      })
 
       // Update cache
       eventsCache.data = displayEvents
@@ -157,15 +184,43 @@ export default function BrowseEvents() {
         // Sort by attendees count
         matchesTimeFilter = true // We'll sort by popularity later
       }
+
+      let matchesAttendeesFilter = true
+      if (attendeesFilter === 'low') {
+        matchesAttendeesFilter = event.attendees < 50
+      } else if (attendeesFilter === 'medium') {
+        matchesAttendeesFilter = event.attendees >= 50 && event.attendees < 200
+      } else if (attendeesFilter === 'high') {
+        matchesAttendeesFilter = event.attendees >= 200
+      }
+
+      // Date range filter
+      let matchesDateRange = true
+      if (startDate && endDate) {
+        const eventDate = event.rawDate
+        const start = new Date(startDate)
+        const end = new Date(endDate)
+        end.setHours(23, 59, 59, 999) // Set to end of day
+        matchesDateRange = eventDate >= start && eventDate <= end
+      } else if (startDate) {
+        const eventDate = event.rawDate
+        const start = new Date(startDate)
+        matchesDateRange = eventDate >= start
+      } else if (endDate) {
+        const eventDate = event.rawDate
+        const end = new Date(endDate)
+        end.setHours(23, 59, 59, 999) // Set to end of day
+        matchesDateRange = eventDate <= end
+      }
       
-      return matchesSearch && matchesCategory && matchesTimeFilter
+      return matchesSearch && matchesCategory && matchesTimeFilter && matchesAttendeesFilter && matchesDateRange
     }).sort((a, b) => {
       if (timeFilter === 'popular') {
         return b.attendees - a.attendees
       }
       return a.rawDate.getTime() - b.rawDate.getTime()
     })
-  }, [events, searchTerm, selectedCategory, timeFilter])
+  }, [events, searchTerm, selectedCategory, timeFilter, attendeesFilter, startDate, endDate])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -238,19 +293,25 @@ export default function BrowseEvents() {
                     <input
                       type="date"
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
                     />
                     <input
                       type="date"
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
                     />
                   </div>
                 </div>
-            <div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Attendees
                   </label>
                   <select
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                    value={attendeesFilter}
+                    onChange={(e) => setAttendeesFilter(e.target.value)}
                   >
                     <option value="">Any</option>
                     <option value="low">Low (0-50)</option>

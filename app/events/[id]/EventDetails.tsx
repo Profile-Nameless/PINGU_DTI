@@ -184,6 +184,46 @@ const mockEventData = {
   }
 };
 
+// Mock speakers data
+const mockSpeakers = [
+  {
+    name: "Dr. Sarah Johnson",
+    role: "CTO, Tech Innovations",
+    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&h=300&fit=crop&q=80",
+    bio: "Dr. Johnson has over 15 years of experience in AI and machine learning."
+  },
+  {
+    name: "Michael Chen",
+    role: "AI Research Lead, Future Labs",
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&q=80",
+    bio: "Leading researcher in artificial intelligence and neural networks."
+  },
+  {
+    name: "Priya Patel",
+    role: "Founder, Digital Solutions",
+    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&h=300&fit=crop&q=80",
+    bio: "Serial entrepreneur with multiple successful tech startups."
+  }
+];
+
+// Add mock ticket data
+const mockTicketData = {
+  price: "₹500",
+  refundPolicy: "Full refund available up to 48 hours before the event",
+  ticketIncludes: [
+    "Access to all sessions",
+    "Event materials",
+    "Networking opportunities",
+    "Lunch and refreshments"
+  ],
+  importantNotes: [
+    "Please bring a valid ID for check-in",
+    "Digital tickets will be sent to your email",
+    "No outside food allowed",
+    "Parking available at venue"
+  ]
+};
+
 // Memoize the ImageWithBlur component
 const ImageWithBlur = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -414,31 +454,58 @@ export default function EventDetails({ id, fromDashboard, mode }: EventDetailsPr
   const processedEventData = useMemo(() => {
     if (!eventData) return null;
     
+    const eventDetail = eventData.event_details;
+    const organizer = eventData.organizers;
+    
+    console.log('Event detail price:', eventDetail.price);
+    console.log('Event detail price type:', typeof eventDetail.price);
+    
     return {
       ...eventData,
-      rules: eventData.rules && Object.keys(eventData.rules).length > 0 ? (
-        typeof eventData.rules === 'string' ? JSON.parse(eventData.rules) : 
-        typeof eventData.rules === 'object' ? Object.values(eventData.rules) : 
-        eventData.rules
+      title: eventDetail.title,
+      description: eventDetail.description,
+      date: eventDetail.date,
+      time: eventDetail.start_time,
+      location: eventDetail.location,
+      venue: eventDetail.venue,
+      coverImage: eventDetail.cover_image,
+      category: eventDetail.category,
+      attendees: eventDetail.current_registrations,
+      capacity: eventDetail.capacity,
+      price: eventDetail.price !== null && eventDetail.price !== undefined ? 
+        (typeof eventDetail.price === 'number' ? `₹${eventDetail.price}` : eventDetail.price) : 
+        'Free',
+      refundPolicy: eventDetail.refund_policy || mockTicketData.refundPolicy,
+      ticketIncludes: mockTicketData.ticketIncludes,
+      importantNotes: mockTicketData.importantNotes,
+      rules: eventDetail.rules && Object.keys(eventDetail.rules).length > 0 ? (
+        typeof eventDetail.rules === 'string' ? JSON.parse(eventDetail.rules) : 
+        typeof eventDetail.rules === 'object' ? Object.values(eventDetail.rules) : 
+        eventDetail.rules
       ) : mockEventData.rules,
-      eligibility: eventData.eligibility && Object.keys(eventData.eligibility).length > 0 ? (
-        typeof eventData.eligibility === 'string' ? JSON.parse(eventData.eligibility) : 
-        typeof eventData.eligibility === 'object' ? Object.values(eventData.eligibility) : 
-        eventData.eligibility
+      eligibility: eventDetail.eligibility && Object.keys(eventDetail.eligibility).length > 0 ? (
+        typeof eventDetail.eligibility === 'string' ? JSON.parse(eventDetail.eligibility) : 
+        typeof eventDetail.eligibility === 'object' ? Object.values(eventDetail.eligibility) : 
+        eventDetail.eligibility
       ) : mockEventData.eligibility,
-      schedule: eventData.schedule && Object.keys(eventData.schedule).length > 0 ? (
-        typeof eventData.schedule === 'string' ? JSON.parse(eventData.schedule) : 
-        typeof eventData.schedule === 'object' ? 
-          Object.entries(eventData.schedule).map(([time, title]) => ({ time, title: title as string })) : 
-        eventData.schedule
+      schedule: eventDetail.schedule && Object.keys(eventDetail.schedule).length > 0 ? (
+        typeof eventDetail.schedule === 'string' ? JSON.parse(eventDetail.schedule) : 
+        typeof eventDetail.schedule === 'object' ? 
+          Object.entries(eventDetail.schedule).map(([time, title]) => ({ time, title: title as string })) : 
+        eventDetail.schedule
       ) : mockEventData.schedule,
-      speakers: eventData.speakers ? (typeof eventData.speakers === 'string' ? JSON.parse(eventData.speakers) : eventData.speakers) : mockEventData.speakers,
-      venue: eventData.venue ? (
-        typeof eventData.venue === 'string' ? JSON.parse(eventData.venue) : 
-        typeof eventData.venue === 'object' ? eventData.venue : 
-        mockEventData.venue
-      ) : mockEventData.venue,
-      gallery: eventData.gallery ? (typeof eventData.gallery === 'string' ? JSON.parse(eventData.gallery) : eventData.gallery) : mockEventData.gallery
+      gallery: eventDetail.gallery ? (typeof eventDetail.gallery === 'string' ? JSON.parse(eventDetail.gallery) : eventDetail.gallery) : mockEventData.gallery,
+      organizer: {
+        name: organizer?.profiles?.[0]?.full_name || organizer?.name || 'Unknown Organizer',
+        logo: organizer?.logo || mockEventData.organizer.logo,
+        website: organizer?.website || mockEventData.organizer.website,
+        email: organizer?.email || mockEventData.organizer.email,
+        description: organizer?.description || mockEventData.organizer.description,
+        phone: organizer?.phone || mockEventData.organizer.phone,
+        linkedin: organizer?.linkedin || mockEventData.organizer.linkedin,
+        twitter: organizer?.twitter || mockEventData.organizer.twitter,
+        instagram: organizer?.instagram || mockEventData.organizer.instagram,
+      }
     };
   }, [eventData]);
 
@@ -454,12 +521,15 @@ export default function EventDetails({ id, fromDashboard, mode }: EventDetailsPr
       date: processedEventData.date || mockEventData.date,
       time: processedEventData.time || mockEventData.time,
       location: processedEventData.location || mockEventData.location,
-      attendees: processedEventData.registrations || mockEventData.attendees,
+      attendees: processedEventData.attendees || mockEventData.attendees,
       capacity: processedEventData.capacity || mockEventData.capacity,
-      price: processedEventData.price ? `₹${processedEventData.price}` : mockEventData.price,
+      price: processedEventData.price || 'Free',
+      refundPolicy: processedEventData.refundPolicy || mockTicketData.refundPolicy,
+      ticketIncludes: processedEventData.ticketIncludes || mockTicketData.ticketIncludes,
+      importantNotes: processedEventData.importantNotes || mockTicketData.importantNotes,
       category: processedEventData.category || mockEventData.category,
       status: processedEventData.status || mockEventData.status,
-      coverImage: processedEventData.coverimage || mockEventData.coverImage,
+      coverImage: processedEventData.coverImage || mockEventData.coverImage,
       gallery: Array.isArray(processedEventData.gallery) && processedEventData.gallery.length > 0 
         ? processedEventData.gallery 
         : mockEventData.gallery,
@@ -509,6 +579,7 @@ export default function EventDetails({ id, fromDashboard, mode }: EventDetailsPr
       const now = Date.now();
       
       if (cachedData && now - cachedData.timestamp < CACHE_EXPIRATION) {
+        console.log('Using cached event data:', cachedData.data);
         setEventData(cachedData.data);
         if (cachedData.data.organizer_id) {
           fetchOrganizerData(cachedData.data.organizer_id);
@@ -521,31 +592,81 @@ export default function EventDetails({ id, fromDashboard, mode }: EventDetailsPr
       
       const { data, error } = await supabase
         .from('events')
-        .select('*')
+        .select(`
+          id,
+          organizer_id,
+          status,
+          created_at,
+          updated_at,
+          event_details!inner (
+            title,
+            description,
+            date,
+            start_time,
+            end_time,
+            location,
+            venue,
+            cover_image,
+            gallery,
+            category,
+            current_registrations,
+            capacity,
+            price,
+            refund_policy,
+            eligibility,
+            rules,
+            schedule
+          ),
+          organizers!inner (
+            id,
+            name,
+            user_id,
+            profiles!inner (
+              full_name,
+              college
+            )
+          )
+        `)
         .eq('id', id)
         .single();
       
       if (error) {
+        console.error('Error fetching event:', error);
         throw error;
       }
       
       if (!data) {
+        console.error('No event data found for ID:', id);
         throw new Error('Event not found');
       }
       
+      console.log('Raw event data from database:', data);
+      console.log('Event details:', data.event_details);
+      console.log('Event price:', data.event_details[0]?.price);
+      console.log('Event refund policy:', data.event_details[0]?.refund_policy);
+      
+      // Process the event data
+      const processedData = {
+        ...data,
+        event_details: data.event_details[0],
+        organizers: data.organizers[0]
+      };
+      
+      console.log('Processed event data:', processedData);
+      
       // Cache the fetched data with timestamp
       eventCache.set(cacheKey, {
-        data,
+        data: processedData,
         timestamp: now
       });
       
-      setEventData(data);
+      setEventData(processedData);
       
-      if (data.organizer_id) {
-        fetchOrganizerData(data.organizer_id);
+      if (processedData.organizer_id) {
+        fetchOrganizerData(processedData.organizer_id);
       }
     } catch (err: any) {
-      console.error('Error fetching event:', err);
+      console.error('Error in fetchEventData:', err);
       setError(err.message || 'Failed to load event details');
       toast.error('Failed to load event details');
     } finally {
@@ -1152,25 +1273,70 @@ export default function EventDetails({ id, fromDashboard, mode }: EventDetailsPr
                     </Badge>
                   </div>
                   
-                  <div className="space-y-4 mb-6">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Price</span>
-                      <span className="font-bold text-xl">{event.price}</span>
+                  {/* Ticket Information */}
+                  <div className="bg-white/50 backdrop-blur-sm rounded-lg p-4 border border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Ticket className="h-5 w-5 text-orange-500" />
+                        <span className="font-medium text-gray-900">Event Ticket</span>
+                      </div>
+                      <span className="font-bold text-xl bg-gradient-to-r from-orange-500 to-purple-600 bg-clip-text text-transparent">
+                        {event.price || mockTicketData.price}
+                      </span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Available Spots</span>
-                      <span className="font-bold">{event.capacity - event.attendees}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-900 font-medium">Total</span>
-                      <span className="font-bold text-xl">{event.price}</span>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <div className="p-1.5 rounded-full bg-green-50 mt-0.5">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Refund Policy</p>
+                          <p className="text-sm text-gray-600">
+                            {event.refundPolicy || mockTicketData.refundPolicy}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2">
+                        <div className="p-1.5 rounded-full bg-blue-50 mt-0.5">
+                          <FileText className="h-4 w-4 text-blue-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Ticket Includes</p>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            {(event.ticketIncludes && event.ticketIncludes.length > 0 ? event.ticketIncludes : mockTicketData.ticketIncludes).map((item: string, index: number) => (
+                              <li key={index} className="flex items-start gap-2">
+                                <span className="text-blue-500">•</span>
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2">
+                        <div className="p-1.5 rounded-full bg-purple-50 mt-0.5">
+                          <Info className="h-4 w-4 text-purple-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Important Notes</p>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            {(event.importantNotes && event.importantNotes.length > 0 ? event.importantNotes : mockTicketData.importantNotes).map((note: string, index: number) => (
+                              <li key={index} className="flex items-start gap-2">
+                                <span className="text-purple-500">•</span>
+                                {note}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
                   <Button 
                     className={cn(
-                      "w-full bg-gradient-to-r from-orange-500 via-blue-600 to-purple-600 text-white hover:shadow-lg transition-all duration-300 py-6 text-lg relative",
+                      "w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg transition-all duration-300 py-6 text-lg relative",
                       isLoading && "opacity-90 cursor-not-allowed"
                     )}
                     onClick={() => {
@@ -1428,29 +1594,23 @@ export default function EventDetails({ id, fromDashboard, mode }: EventDetailsPr
                         <Card className="p-6 shadow-sm border-2 border-orange-100">
                           <h3 className="text-xl font-semibold mb-4">Featured Speakers</h3>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {event.speakers && event.speakers.length > 0 ? (
-                              event.speakers.map((speaker: EventSpeaker, index: number) => (
-                                <div key={index} className="bg-gray-50 p-4 rounded-lg text-center group">
-                                  <div className="w-24 h-24 rounded-full mx-auto mb-3 overflow-hidden">
-                                    <Image
-                                      src={speaker.image}
-                                      alt={speaker.name}
-                                      width={96}
-                                      height={96}
-                                      className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
-                                    />
-                  </div>
-                                  <h4 className="font-medium">{speaker.name}</h4>
-                                  <p className="text-sm text-gray-500">{speaker.role}</p>
-                                  <p className="text-sm text-gray-600 mt-2">{speaker.bio}</p>
-                  </div>
-                              ))
-                            ) : (
-                              <div className="col-span-3 text-center py-8">
-                                <p className="text-gray-500">Speaker information will be announced soon</p>
-                </div>
-                            )}
-              </div>
+                            {(event.speakers && event.speakers.length > 0 ? event.speakers : mockSpeakers).map((speaker: EventSpeaker, index: number) => (
+                              <div key={index} className="bg-gray-50 p-4 rounded-lg text-center group">
+                                <div className="w-24 h-24 rounded-full mx-auto mb-3 overflow-hidden">
+                                  <Image
+                                    src={speaker.image}
+                                    alt={speaker.name}
+                                    width={96}
+                                    height={96}
+                                    className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
+                                  />
+                                </div>
+                                <h4 className="font-medium">{speaker.name}</h4>
+                                <p className="text-sm text-gray-500">{speaker.role}</p>
+                                <p className="text-sm text-gray-600 mt-2">{speaker.bio}</p>
+                              </div>
+                            ))}
+                          </div>
                         </Card>
                       </TabsContent>
                     </motion.div>

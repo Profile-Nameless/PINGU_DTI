@@ -99,32 +99,40 @@ export default function LandingPage() {
 
   // Memoize the fetch events function
   const fetchEvents = useCallback(async () => {
-    if (eventsLoaded.current || !mountedRef.current) return;
-    
     try {
-      setIsLoading(true)
-      const [popular, college] = await Promise.all([
-        getPopularEvents(8),
-        user?.id ? (async () => {
-          try {
-            const { data: userProfile } = await supabase
-              .from('profiles')
-              .select('college')
-              .eq('id', user.id)
-              .single()
-
-            return userProfile?.college ? 
-              getEventsFromCollege(userProfile.college, 8) : 
-              getRandomEvents(8)
-          } catch {
-            return getRandomEvents(8)
-          }
-        })() : getRandomEvents(8)
-      ])
+      console.log('Starting fetchEvents...');
+      setIsLoading(true);
       
-      if (mountedRef.current) {
-        setPopularEvents(popular)
-        setCollegeEvents(college)
+      // Get user profile first
+      console.log('Fetching user profile...');
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Current user:', user);
+      
+      if (user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('college')
+          .eq('id', user.id)
+          .single();
+          
+        console.log('User profile:', profile);
+        
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+        }
+        
+        // Fetch popular events and college events in parallel
+        console.log('Fetching popular and college events...');
+        const [popularEvents, collegeEvents] = await Promise.all([
+          getPopularEvents(8),
+          profile?.college ? getEventsFromCollege(profile.college, 8) : Promise.resolve([])
+        ]);
+        
+        console.log('Popular events:', popularEvents);
+        console.log('College events:', collegeEvents);
+        
+        setPopularEvents(popularEvents)
+        setCollegeEvents(collegeEvents)
         eventsLoaded.current = true
         setIsLoading(false)
         // Show events section after data is loaded
@@ -135,9 +143,23 @@ export default function LandingPage() {
             setShowCategories(true)
           }, 1000)
         }, 500)
+      } else {
+        // If no user, just fetch popular events
+        console.log('No user found, fetching only popular events...');
+        const popularEvents = await getPopularEvents(8);
+        console.log('Popular events (no user):', popularEvents);
+        
+        setPopularEvents(popularEvents)
+        setCollegeEvents([])
+        eventsLoaded.current = true
+        setIsLoading(false)
+        setShowEvents(true)
+        setTimeout(() => {
+          setShowCategories(true)
+        }, 1000)
       }
     } catch (error) {
-      console.error('Error loading events:', error)
+      console.error('Error in fetchEvents:', error);
       if (mountedRef.current) {
         const random = await getRandomEvents(8)
         setCollegeEvents(random)
@@ -149,7 +171,7 @@ export default function LandingPage() {
         }, 1000)
       }
     }
-  }, [user?.id])
+  }, [])
 
   // Handle hero section animation completion
   const onHeroAnimationComplete = useCallback(() => {

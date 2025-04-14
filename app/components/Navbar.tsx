@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Menu, Search, X } from "lucide-react"
+import { Menu, Search, X, User } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { usePathname, useRouter } from "next/navigation"
@@ -18,6 +18,12 @@ import {
 } from "@/components/ui/command"
 import { supabase } from "../utils/supabase"
 import { ThemeToggle } from "./theme-toggle"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export function Navbar() {
   const [isMounted, setIsMounted] = useState(false)
@@ -125,15 +131,7 @@ export function Navbar() {
                 >
                   Schedule
                 </a>
-                <NavLink href="/ticket">Ticket</NavLink>
                 <NavLink href="/contact">Contact us</NavLink>
-                {user && userMetadata?.role === "organizer" && (
-                  <NavLink href="/organizer">
-                    <span className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-purple-600 text-white rounded-full text-sm">
-                      Organizer Dashboard
-                    </span>
-                  </NavLink>
-                )}
               </div>
             </div>
 
@@ -142,15 +140,26 @@ export function Navbar() {
                 onClick={() => setShowSearch(true)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <Search className="h-5 w-5 text-gray-600" />
+                <Search className="h-5 w-5" />
               </button>
               {user ? (
-                <Button 
-                  onClick={handleSignOut}
-                  className="bg-gradient-to-r from-orange-500 via-blue-600 to-purple-600 text-white hover:shadow-lg transition-all duration-300 hover:scale-105"
-                >
-                  Sign Out
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                      <User className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56 bg-black/80 backdrop-blur-sm text-white border-none">
+                    {userMetadata?.role === "organizer" && (
+                      <DropdownMenuItem onClick={() => router.push('/organizer')}>
+                        Organizer Dashboard
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : (
                 <Button 
                   onClick={() => router.push('/auth')}

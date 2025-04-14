@@ -28,50 +28,62 @@ export default function DashboardPage() {
     totalRegistrations: 0,
     upcomingEvents: 0,
   });
+
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user) {
-      fetchDashboardData();
+    if (user?.id) {
+      fetchDashboardData(user.id);
     }
   }, [user]);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (userId: string) => {
     try {
       setIsLoading(true);
-      
-      // Fetch events created by the organizer
+
+      // Fetch events with event_details to get date
       const { data: events, error: eventsError } = await supabase
         .from('events')
-        .select('*')
-        .eq('organizer_id', user?.id)
+        .select(`
+          *,
+          event_details (
+            date
+          )
+        `)
+        .eq('organizer_id', userId)
         .order('created_at', { ascending: false });
 
       if (eventsError) throw eventsError;
+
+      const eventIds = events?.map(event => event.id) || [];
 
       // Get total registrations
       const { data: registrations, error: registrationsError } = await supabase
         .from('registrations')
         .select('event_id')
-        .in('event_id', events?.map(event => event.id) || []);
+        .in('event_id', eventIds);
 
       if (registrationsError) throw registrationsError;
 
       // Calculate stats
       const now = new Date();
-      const activeEvents = events?.filter(event => new Date(event.date) >= now) || [];
-      
+
+      const activeEvents = events.filter(event => {
+        const dateStr = event?.event_details?.date;
+        if (!dateStr) return false;
+        return new Date(dateStr) >= now;
+      });
+
       setStats({
-        totalEvents: events?.length || 0,
+        totalEvents: events.length,
         activeEvents: activeEvents.length,
-        totalRegistrations: registrations?.length || 0,
+        totalRegistrations: registrations.length,
         upcomingEvents: activeEvents.slice(0, 5).length,
       });
 
-      // Set recent events
-      setRecentEvents(events?.slice(0, 5) || []);
+      setRecentEvents(events.slice(0, 5));
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {

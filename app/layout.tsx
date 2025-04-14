@@ -1,9 +1,9 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter, Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Footer } from '../components/ui/footer'
-import { Navbar } from './components/Navbar'
+import { NavbarWrapper } from './components/NavbarWrapper'
 import { AuthProvider } from './contexts/AuthContext'
 import { Toaster } from "@/components/ui/toaster"
 
@@ -20,11 +20,17 @@ const spaceGrotesk = Space_Grotesk({
   preload: true,
 })
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#ffffff',
+}
+
 export const metadata: Metadata = {
   title: 'PingU - Campus Events',
   description: 'Discover and connect with campus events',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
-  themeColor: '#ffffff',
 }
 
 export default function RootLayout({
@@ -60,7 +66,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <div className="relative min-h-screen">
-              <Navbar />
+              <NavbarWrapper />
               {children}
               <Footer />
             </div>

@@ -440,7 +440,7 @@ export default function OrganizerDashboard() {
               Export Data
             </Button>
             <Button asChild className="gap-2">
-              <Link href="/organizer/events/new">
+              <Link href="/create-event">
                 <PlusCircle className="w-4 h-4" />
                 Create Event
               </Link>
@@ -607,7 +607,7 @@ export default function OrganizerDashboard() {
                 <h3 className="text-lg font-medium text-gray-900 mb-1">No events yet</h3>
                 <p className="text-gray-500 mb-4">Create your first event to get started</p>
                 <Button asChild>
-                  <Link href="/organizer/events/new">Create Event</Link>
+                  <Link href="/create-event">Create Event</Link>
                 </Button>
               </div>
             ) : (
@@ -706,7 +706,7 @@ export default function OrganizerDashboard() {
             <h2 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h2>
             <div className="space-y-3">
               <Button variant="outline" className="w-full justify-start gap-2" asChild>
-                <Link href="/organizer/events/new">
+                <Link href="/create-event">
                   <PlusCircle className="w-4 h-4" />
                   Create New Event
                 </Link>

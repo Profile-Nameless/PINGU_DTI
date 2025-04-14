@@ -65,7 +65,7 @@ export default function EventCard({ event }: EventCardProps) {
               className="flex items-center"
             >
               <MapPin className="h-4 w-4 mr-2 text-red-500" />
-              <span className="line-clamp-1">{getVenueName(event.venue)}, {event.location}</span>
+              <span className="line-clamp-1">{event.location}</span>
             </motion.p>
             <motion.p 
               whileHover={{ x: 5 }}

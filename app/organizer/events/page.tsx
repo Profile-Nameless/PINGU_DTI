@@ -287,9 +287,9 @@ export default function EventsPage() {
               <Download className="w-4 h-4" />
               Export Events
             </Button>
-            <Button asChild className="gap-2 bg-gradient-to-r from-orange-500 via-blue-600 to-purple-600">
-              <Link href="/organizer/events/new">
-                <Plus className="h-4 w-4 mr-2" />
+            <Button asChild className="gap-2">
+              <Link href="/create-event">
+                <PlusCircle className="w-4 h-4" />
                 Create Event
               </Link>
             </Button>
@@ -485,7 +485,7 @@ export default function EventsPage() {
               <h3 className="text-lg font-medium text-gray-900 mb-1">No events found</h3>
               <p className="text-gray-500 mb-4">No events match your search criteria</p>
               <Button asChild>
-                <Link href="/organizer/events/new">Create your first event</Link>
+                <Link href="/create-event">Create your first event</Link>
               </Button>
             </div>
           ) : (

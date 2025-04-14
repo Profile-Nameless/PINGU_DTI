@@ -2,36 +2,28 @@ import { supabase } from './supabase';
 
 export interface Event {
   id: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  location: string;
-  venue: string | { name: string };
-  coverimage: string | null;
-  coverImage: string | null;
-  gallery?: string[];
-  category: string;
   organizer_id: string;
-  registrations: number;
+  status: string;
   created_at: string;
   updated_at: string;
-  status: string;
-  capacity: number;
-  price: number;
-  eligibility: string[] | null;
-  rules: string[] | null;
-  schedule: any;
-  interested: number;
-  organizers?: {
-    id: string;
-    name: string;
-    user_id: string;
-    profiles?: {
-      full_name: string;
-      college?: string;
-    };
-  };
+  event_details: {
+    title: string;
+    description: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+    location: string;
+    venue: string;
+    cover_image: string;
+    gallery: string[];
+    category: string;
+    current_registrations: number;
+    capacity: number;
+    price: number;
+    eligibility: string[];
+    rules: string[];
+    schedule: string[];
+  }[];
 }
 
 export interface DisplayEvent {
@@ -78,8 +70,8 @@ export const convertToDisplayEvent = async (event: Event, organizerName: string 
       title: event.title,
       date: new Date(event.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
       time: event.time,
-      location: event.location,
-      venue: typeof event.venue === 'object' && event.venue.name ? event.venue.name : 'Venue TBA',
+      location: event.location || 'Location TBA',
+      venue: 'Venue TBA',
       image: event.coverimage || event.coverImage || '/placeholder.svg?height=300&width=400',
       category: event.category,
       organizer: organizerName,
@@ -107,40 +99,91 @@ export const convertToDisplayEvent = async (event: Event, organizerName: string 
 // Function to get random events with caching
 export const getRandomEvents = async (count: number): Promise<DisplayEvent[]> => {
   try {
+    console.log('Starting getRandomEvents with count:', count);
     const cacheKey = `random_${count}`;
     const cachedData = eventCache.get(cacheKey);
     if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
+      console.log('Returning cached random events:', cachedData.data);
       return cachedData.data;
     }
 
-    // Fetch events with organizer names in a single query
+    // Fetch events with event details in a single query
+    console.log('Fetching random events...');
     const { data, error } = await supabase
       .from('events')
       .select(`
-        *,
-        organizers!inner (
-          id,
-          name,
-          user_id,
-          profiles!inner (
-            full_name
-          )
+        id,
+        organizer_id,
+        status,
+        created_at,
+        updated_at,
+        event_details!inner (
+          title,
+          description,
+          date,
+          start_time,
+          end_time,
+          location,
+          venue,
+          cover_image,
+          gallery,
+          category,
+          current_registrations,
+          capacity,
+          price,
+          eligibility,
+          rules,
+          schedule
         )
       `)
       .order('created_at', { ascending: false })
       .limit(count);
     
-    if (error || !data || data.length === 0) {
+    if (error) {
+      console.error('Error fetching random events:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      console.log('No random events found');
       return [];
     }
     
-    // Convert to display format with organizer names
+    console.log('Found random events data:', data);
+    
+    // Convert to display format
+    console.log('Converting random events to display format...');
     const displayEvents = await Promise.all(
-      data.map((event: any) => {
-        const organizerName = event.organizers?.profiles?.full_name || event.organizers?.name || 'Unknown Organizer';
-        return convertToDisplayEvent(event, organizerName);
+      (data as Event[]).map(async (event) => {
+        const eventDetail = event.event_details[0];
+        const organizerName = await getOrganizerNameById(event.organizer_id);
+        
+        return convertToDisplayEvent({
+          id: event.id,
+          title: eventDetail.title,
+          description: eventDetail.description,
+          date: eventDetail.date,
+          time: eventDetail.start_time,
+          location: eventDetail.location,
+          venue: eventDetail.venue,
+          coverImage: eventDetail.cover_image,
+          category: eventDetail.category,
+          registrations: eventDetail.current_registrations,
+          capacity: eventDetail.capacity,
+          price: eventDetail.price,
+          eligibility: eventDetail.eligibility,
+          rules: eventDetail.rules,
+          schedule: eventDetail.schedule,
+          organizer_id: event.organizer_id,
+          status: event.status,
+          created_at: event.created_at,
+          updated_at: event.updated_at,
+          interested: 0
+        }, organizerName);
       })
     );
+    
+    console.log('Converted random display events:', displayEvents);
     
     // Cache the results
     eventCache.set(cacheKey, {
@@ -150,56 +193,85 @@ export const getRandomEvents = async (count: number): Promise<DisplayEvent[]> =>
     
     return displayEvents;
   } catch (error) {
+    console.error('Error in getRandomEvents:', error);
     return [];
   }
 };
 
 // Function to get popular events with caching
-export const getPopularEvents = async (count: number): Promise<DisplayEvent[]> => {
+export const getPopularEvents = async (count: number = 8): Promise<DisplayEvent[]> => {
   try {
+    console.log('Starting getPopularEvents with count:', count);
     const cacheKey = `popular_${count}`;
     const cachedData = eventCache.get(cacheKey);
     if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
+      console.log('Returning cached popular events:', cachedData.data);
       return cachedData.data;
     }
 
-    // Fetch events with organizer names in a single query
+    // Fetch the most registered events (joined with event_details)
+    console.log('Fetching top registered events...');
     const { data, error } = await supabase
-      .from('events')
+      .from('event_details')
       .select(`
         *,
-        organizers!inner (
+        events (
           id,
-          name,
-          user_id,
-          profiles!inner (
-            full_name
-          )
+          organizer_id,
+          status,
+          created_at,
+          updated_at
         )
       `)
-      .order('registrations', { ascending: false })
+      .order('current_registrations', { ascending: false })
       .limit(count);
-    
+
     if (error || !data || data.length === 0) {
+      console.error('Error fetching top registered events:', error);
       return getRandomEvents(count);
     }
-    
-    // Convert to display format with organizer names
+
+    // Convert to display format
+    console.log('Converting popular events to display format...');
     const displayEvents = await Promise.all(
-      data.map((event: any) => {
-        const organizerName = event.organizers?.profiles?.full_name || event.organizers?.name || 'Unknown Organizer';
-        return convertToDisplayEvent(event, organizerName);
+      data.map(async (detail: any) => {
+        const event = detail.events;
+        const organizerName = await getOrganizerNameById(event.organizer_id);
+
+        return convertToDisplayEvent({
+          id: event.id,
+          title: detail.title,
+          description: detail.description,
+          date: detail.date,
+          time: detail.start_time,
+          location: detail.location,
+          venue: detail.venue,
+          coverImage: detail.cover_image,
+          category: detail.category,
+          registrations: detail.current_registrations,
+          capacity: detail.capacity,
+          price: detail.price,
+          eligibility: detail.eligibility,
+          rules: detail.rules,
+          schedule: detail.schedule,
+          organizer_id: event.organizer_id,
+          status: event.status,
+          created_at: event.created_at,
+          updated_at: event.updated_at,
+          interested: 0
+        }, organizerName);
       })
     );
-    
+
     // Cache the results
     eventCache.set(cacheKey, {
       data: displayEvents,
       timestamp: Date.now()
     });
-    
+
     return displayEvents;
   } catch (error) {
+    console.error('Error in getPopularEvents:', error);
     return getRandomEvents(count);
   }
 };
@@ -208,56 +280,113 @@ export const getPopularEvents = async (count: number): Promise<DisplayEvent[]> =
 export const getEventsFromCollege = async (college: string, count: number): Promise<DisplayEvent[]> => {
   try {
     if (!college) {
-      return getRandomEvents(count);
+      console.log('No college provided');
+      return [];
     }
-    
+
+    console.log('Starting getEventsFromCollege with college:', college);
     const cacheKey = `college_${college}_${count}`;
     const cachedData = eventCache.get(cacheKey);
     if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
+      console.log('Returning cached college events:', cachedData.data);
       return cachedData.data;
     }
-    
-    // Fetch events with organizer names in a single query
+
+    // Fetch events directly with a join to profiles
+    console.log('Fetching college events...');
     const { data, error } = await supabase
       .from('events')
       .select(`
-        *,
+        id,
+        organizer_id,
+        status,
+        created_at,
+        updated_at,
+        event_details!inner (
+          title,
+          description,
+          date,
+          start_time,
+          end_time,
+          location,
+          venue,
+          cover_image,
+          gallery,
+          category,
+          current_registrations,
+          capacity,
+          price,
+          eligibility,
+          rules,
+          schedule
+        ),
         organizers!inner (
           id,
-          name,
-          user_id,
           profiles!inner (
-            full_name,
             college
           )
         )
       `)
       .eq('organizers.profiles.college', college)
-      .eq('organizers.profiles.role', 'organizer')
       .order('created_at', { ascending: false })
       .limit(count);
-    
-    if (error || !data || data.length === 0) {
-      return getRandomEvents(count);
+
+    if (error) {
+      console.error('Error fetching college events:', error);
+      return [];
     }
-    
-    // Convert to display format with organizer names
+
+    if (!data || data.length === 0) {
+      console.log('No events found for college:', college);
+      return [];
+    }
+
+    console.log('Found events data:', data);
+
+    // Convert events to display format
+    console.log('Converting college events to display format...');
     const displayEvents = await Promise.all(
-      data.map((event: any) => {
-        const organizerName = event.organizers?.profiles?.full_name || event.organizers?.name || 'Unknown Organizer';
-        return convertToDisplayEvent(event, organizerName);
+      (data as Event[]).map(async (event) => {
+        const eventDetail = event.event_details[0];
+        const organizerName = await getOrganizerNameById(event.organizer_id);
+
+        return convertToDisplayEvent({
+          id: event.id,
+          title: eventDetail.title,
+          description: eventDetail.description,
+          date: eventDetail.date,
+          time: eventDetail.start_time,
+          location: eventDetail.location,
+          venue: eventDetail.venue,
+          coverImage: eventDetail.cover_image,
+          category: eventDetail.category,
+          registrations: eventDetail.current_registrations,
+          capacity: eventDetail.capacity,
+          price: eventDetail.price,
+          eligibility: eventDetail.eligibility,
+          rules: eventDetail.rules,
+          schedule: eventDetail.schedule,
+          organizer_id: event.organizer_id,
+          status: event.status,
+          created_at: event.created_at,
+          updated_at: event.updated_at,
+          interested: 0
+        }, organizerName);
       })
     );
-    
+
+    console.log('Converted college display events:', displayEvents);
+
     // Cache the results
     eventCache.set(cacheKey, {
       data: displayEvents,
       timestamp: Date.now()
     });
-    
+
     return displayEvents;
   } catch (error) {
-    return getRandomEvents(count);
+    console.error('Error in getEventsFromCollege:', error);
+    return [];
   }
 };
 
@@ -318,8 +447,8 @@ export async function getOrganizerNameById(id: string): Promise<string> {
     }
 
     const { data, error } = await supabase
-      .from('profiles')
-      .select('full_name')
+      .from('organizers')
+      .select('name')
       .eq('id', id)
       .single();
 
@@ -329,11 +458,11 @@ export async function getOrganizerNameById(id: string): Promise<string> {
     }
 
     if (!data) {
-      console.log(`No profile found for organizer ID: ${id}`);
+      console.log(`No organizer found with ID: ${id}`);
       return 'Unknown Organizer';
     }
 
-    return data.full_name || 'Unknown Organizer';
+    return data.name || 'Unknown Organizer';
   } catch (error) {
     console.error('Error in getOrganizerNameById:', error);
     return 'Unknown Organizer';
@@ -343,37 +472,132 @@ export async function getOrganizerNameById(id: string): Promise<string> {
 // Function to get events by category
 export async function getEventsByCategory(category: string, count: number = 8): Promise<DisplayEvent[]> {
   try {
+    console.log('Starting getEventsByCategory with category:', category);
+    const cacheKey = `category_${category.toLowerCase()}_${count}`;
+    const cachedData = eventCache.get(cacheKey);
+    if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
+      console.log('Returning cached category events:', cachedData.data);
+      return cachedData.data;
+    }
+
+    // If no category is specified, return random events
+    if (!category) {
+      console.log('No category specified, returning random events');
+      return getRandomEvents(count);
+    }
+
+    // Normalize the category to lowercase
+    const normalizedCategory = category.toLowerCase();
+
+    // Define related categories
+    let categoriesToSearch = [normalizedCategory];
+    if (normalizedCategory === 'academic') {
+      categoriesToSearch = ['Competition', 'Technology', 'Finance', 'Hackathon'];
+    } else if (normalizedCategory === 'entertainment') {
+      categoriesToSearch = ['Entertainment', 'Music', 'Cultural', 'Gaming'];
+    } else if (normalizedCategory === 'business') {
+      categoriesToSearch = ['Business', 'Entrepreneurship', 'Finance'];
+    } else if (normalizedCategory === 'Art') {
+      categoriesToSearch = ['Art', 'Exhibition', 'Cultural'];
+    } else if (normalizedCategory === 'sports') {
+      categoriesToSearch = ['Sports', 'Gaming'];
+    } else if (normalizedCategory === 'literature') {
+      categoriesToSearch = ['Literature', 'Cultural'];
+    } else if (normalizedCategory === 'workshops') {
+      categoriesToSearch = ['Workshops', 'Workshop'];
+    } 
+    
+
+    console.log('Searching for categories:', categoriesToSearch);
+
+    // Fetch events with event details in a single query
+    console.log('Fetching category events...');
     const { data, error } = await supabase
       .from('events')
       .select(`
-        *,
-        organizers!inner (
-          id,
-          name,
-          user_id,
-          profiles!inner (
-            full_name
-          )
+        id,
+        organizer_id,
+        status,
+        created_at,
+        updated_at,
+        event_details!inner (
+          title,
+          description,
+          date,
+          start_time,
+          end_time,
+          location,
+          venue,
+          cover_image,
+          gallery,
+          category,
+          current_registrations,
+          capacity,
+          price,
+          eligibility,
+          rules,
+          schedule
         )
       `)
-      .eq('category', category)
+      .in('event_details.category', categoriesToSearch)
       .order('created_at', { ascending: false })
       .limit(count);
 
-    if (error || !data) {
+    if (error) {
+      console.error('Error fetching category events:', error);
       return [];
     }
 
+    if (!data || data.length === 0) {
+      console.log('No events found for categories:', categoriesToSearch);
+      return [];
+    }
+
+    console.log('Found category events data:', data);
+
+    // Convert to display format
+    console.log('Converting category events to display format...');
     const displayEvents = await Promise.all(
-      data.map((event: Event) => {
-        const organizerName = event.organizers?.profiles?.full_name || event.organizers?.name || 'Unknown Organizer';
-        return convertToDisplayEvent(event, organizerName);
+      (data as Event[]).map(async (event) => {
+        const eventDetail = event.event_details[0];
+        const organizerName = await getOrganizerNameById(event.organizer_id);
+
+        return convertToDisplayEvent({
+          id: event.id,
+          title: eventDetail.title,
+          description: eventDetail.description,
+          date: eventDetail.date,
+          time: eventDetail.start_time,
+          location: eventDetail.location,
+          venue: eventDetail.venue,
+          coverImage: eventDetail.cover_image,
+          category: eventDetail.category,
+          registrations: eventDetail.current_registrations,
+          capacity: eventDetail.capacity,
+          price: eventDetail.price,
+          eligibility: eventDetail.eligibility,
+          rules: eventDetail.rules,
+          schedule: eventDetail.schedule,
+          organizer_id: event.organizer_id,
+          status: event.status,
+          created_at: event.created_at,
+          updated_at: event.updated_at,
+          interested: 0
+        }, organizerName);
       })
     );
 
+    console.log('Converted category display events:', displayEvents);
+
+    // Cache the results
+    eventCache.set(cacheKey, {
+      data: displayEvents,
+      timestamp: Date.now()
+    });
+
     return displayEvents;
   } catch (error) {
-    console.error('Error fetching events by category:', error);
+    console.error('Error in getEventsByCategory:', error);
     return [];
   }
-} 
+}
