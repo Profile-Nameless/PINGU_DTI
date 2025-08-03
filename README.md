@@ -96,5 +96,5 @@ For major changes or new feature proposals, please create a discussion first.
 For feedback, feature suggestions, or collaborations:
 
 - 📧 Email: `thebussinessduck@gmail.com`  
-- 🔗 LinkedIn: [abhinav]([url](https://www.linkedin.com/in/abhinav-pratap-singh-4a161b28b/))  
+- 🔗 LinkedIn: [abhinav](https://www.linkedin.com/in/abhinav-pratap-singh-4a161b28b/)  
 
