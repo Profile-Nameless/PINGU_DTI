@@ -69,7 +69,7 @@ Whether you're a student discovering workshops, a club looking to analyze event 
 **PingU was developed as a final-year project by a dedicated 4-member team:**
 
 - 🎨 **[Abhinav]** – Frontend Lead (React.js, Tailwind CSS, UI/UX Design)  
-- 🛠️ **[Raghav Garg]** – Backend Developer (Node.js, Express, Supabase Integration)  
+- 🛠️ **[Raghav Garg]** – Backend Developer (Node.js, Express, Supabase Integration), Linkedin:- https://www.linkedin.com/in/raghav-garg-b35a75284?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app  
 - 🧠 **[Pritam Mishra]** – AI/ML Developer (Recommendation System, Event Analytics)  
 - 📊 **[Ritesh Jha]** – Data Specialist (Dataset Collection, Preprocessing, Evaluation)  
 
